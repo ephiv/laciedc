@@ -7,11 +7,13 @@ import json
 import os
 import random
 import textwrap
+import asyncio
 
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 import numpy as np
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import watchfiles
 
 from .database import (
     get_potd_settings,
@@ -26,6 +28,7 @@ from .database import (
     get_potd_leaderboard,
     update_potd_stats,
     get_potd_stats,
+    increment_potd_solves,
 )
 
 
@@ -41,6 +44,8 @@ class POTD(commands.Cog):
         self.bot = bot
         self.scheduler = AsyncIOScheduler()
         self.problems = []
+        self.problems_changed = False
+        self.watcher_task = None
         self.load_problems()
 
     def load_problems(self):
@@ -74,6 +79,7 @@ class POTD(commands.Cog):
 
     async def cog_load(self):
         self.scheduler.start()
+        self.watcher_task = asyncio.create_task(self.watch_problems())
         for guild_id in self.bot.guilds:
             settings = get_potd_settings(guild_id.id)
             if settings and settings.get('channel_id'):
@@ -81,6 +87,22 @@ class POTD(commands.Cog):
 
     async def cog_unload(self):
         self.scheduler.shutdown()
+        if self.watcher_task:
+            self.watcher_task.cancel()
+            try:
+                await self.watcher_task
+            except asyncio.CancelledError:
+                pass
+
+    async def watch_problems(self):
+        try:
+            async for changes in watchfiles.awatch(PROBLEMS_DIR, raise_interrupt=False):
+                self.load_problems()
+                self.problems_changed = True
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
 
     def schedule_potd(self, guild_id: int):
         settings = get_potd_settings(guild_id)
@@ -114,6 +136,10 @@ class POTD(commands.Cog):
         channel = guild.get_channel(settings['channel_id'])
         if not channel:
             return
+        
+        if self.problems_changed:
+            await channel.send("Problems have been updated!")
+            self.problems_changed = False
         
         previous = get_potd_current(guild_id)
         if previous:
@@ -488,6 +514,17 @@ class POTD(commands.Cog):
             lines.append(f"- [{p['id']}] {p.get('source', 'Unknown')} ({p.get('difficulty', 'N/A')})")
         
         await inter.response.send_message("```\n" + "\n".join(lines) + "```")
+
+    @app_commands.command(name="potd_reload", description="Reload problems from disk")
+    async def potd_reload(self, inter: discord.Interaction):
+        count = len(self.problems)
+        self.load_problems()
+        new_count = len(self.problems)
+        self.problems_changed = False
+        await inter.response.send_message(
+            f"Reloaded problems. ({count} → {new_count})",
+            ephemeral=True
+        )
 
     @app_commands.command(name="potd_status", description="Show POTD settings")
     async def potd_status(self, inter: discord.Interaction):
