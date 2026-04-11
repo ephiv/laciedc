@@ -38,6 +38,64 @@ IMAGE_WIDTH = 900
 HEADER_COLOR = (30, 58, 95)
 TEXT_COLOR = (0, 0, 0)
 ACCENT_COLOR = (70, 130, 180)
+LATEX_FONT_SIZE = 18
+
+
+def render_latex_to_image(latex: str, fontsize: int = LATEX_FONT_SIZE) -> Image.Image:
+    """Render LaTeX expression to a PIL Image using matplotlib mathtext."""
+    plt.figure(figsize=(len(latex) * 0.12 + 0.3, 0.6))
+    ax = plt.axes([0, 0, 1, 1])
+    ax.text(0.5, 0.5, f'${latex}$', fontsize=fontsize, ha='center', va='center',
+            usetex=False, transform=ax.transAxes)
+    ax.axis('off')
+    plt.tight_layout(pad=0.05)
+    
+    buf = BytesIO()
+    try:
+        plt.savefig(buf, format='PNG', dpi=150, transparent=True, bbox_inches='tight')
+    except Exception:
+        plt.savefig(buf, format='PNG', dpi=150, transparent=True, bbox_inches='tight',
+                   facecolor='white')
+    plt.close()
+    buf.seek(0)
+    return Image.open(buf).convert('RGBA')
+
+
+def parse_latex_in_text(text: str, fontsize: int = LATEX_FONT_SIZE) -> list:
+    """Parse text and return list of (text_chunk, latex_image_or_None) tuples."""
+    import re
+    parts = []
+    pattern = r'(\$+)(.*?)(\$+)'
+    last_end = 0
+    
+    for match in re.finditer(pattern, text, re.DOTALL):
+        before = text[last_end:match.start()]
+        if before:
+            parts.append((before, None))
+        
+        latex_content = match.group(2)
+        delimiter = match.group(1)
+        
+        if len(delimiter) == 1:
+            try:
+                img = render_latex_to_image(latex_content, fontsize)
+                parts.append(('', img))
+            except Exception:
+                parts.append(('$'+latex_content+'$', None))
+        elif len(delimiter) >= 2:
+            try:
+                img = render_latex_to_image(latex_content, fontsize + 4)
+                parts.append(('', img))
+            except Exception:
+                parts.append('$$'+latex_content+'$$', None)
+        
+        last_end = match.end()
+    
+    remaining = text[last_end:]
+    if remaining:
+        parts.append((remaining, None))
+    
+    return parts
 
 
 class POTD(commands.Cog):
@@ -255,8 +313,18 @@ class POTD(commands.Cog):
         y_offset = header_height + padding
         
         for line in wrapped:
-            draw.text((padding, y_offset), line, fill=TEXT_COLOR, font=font_medium)
-            y_offset += line_height
+            parts = parse_latex_in_text(line)
+            x_pos = padding
+            line_max_height = line_height
+            for text_part, latex_img in parts:
+                if latex_img:
+                    img.paste(latex_img, (x_pos, y_offset - line_height + 8), latex_img)
+                    x_pos += latex_img.width + 2
+                    line_max_height = max(line_max_height, latex_img.height + 12)
+                elif text_part:
+                    draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
+                    x_pos += font_medium.getsize(text_part)[0]
+            y_offset += max(line_height, line_max_height)
         
         y_offset += padding // 2
         
@@ -264,14 +332,34 @@ class POTD(commands.Cog):
             for part in problem['parts']:
                 part_wrapped = textwrap.wrap(part, 83)
                 for line in part_wrapped:
-                    draw.text((padding + 20, y_offset), line, fill=TEXT_COLOR, font=font_medium)
-                    y_offset += line_height
+                    parts = parse_latex_in_text(line)
+                    x_pos = padding + 20
+                    line_max_height = line_height
+                    for text_part, latex_img in parts:
+                        if latex_img:
+                            img.paste(latex_img, (x_pos, y_offset - line_height + 8), latex_img)
+                            x_pos += latex_img.width + 2
+                            line_max_height = max(line_max_height, latex_img.height + 12)
+                        elif text_part:
+                            draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
+                            x_pos += font_medium.getsize(text_part)[0]
+                    y_offset += max(line_height, line_max_height)
                 y_offset += 5
         
         if problem.get('type') == 'mcq' and problem.get('options'):
             for option in problem['options']:
-                draw.text((padding + 20, y_offset), option, fill=TEXT_COLOR, font=font_medium)
-                y_offset += line_height
+                parts = parse_latex_in_text(option)
+                x_pos = padding + 20
+                line_max_height = line_height
+                for text_part, latex_img in parts:
+                    if latex_img:
+                        img.paste(latex_img, (x_pos, y_offset - line_height + 8), latex_img)
+                        x_pos += latex_img.width + 2
+                        line_max_height = max(line_max_height, latex_img.height + 12)
+                    elif text_part:
+                        draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
+                        x_pos += font_medium.getsize(text_part)[0]
+                y_offset += max(line_height, line_max_height)
             y_offset += padding // 2
         
         if diagram_img:
