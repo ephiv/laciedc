@@ -1,0 +1,13 @@
+{
+    "default_settings": {
+        "automod_enabled": true,
+        "spam_threshold": 5,
+        "mention_threshold": 3,
+        "word_blacklist": [],
+        "link_whitelist": [],
+        "link_blocking_enabled": true,
+        "mute_duration_minutes": 5,
+        "auto_unmute_minutes": 5
+    },
+    "owner_ids": []
+}
