@@ -319,7 +319,7 @@ class POTD(commands.Cog):
                     line_max_height = max(line_max_height, latex_img.height + 12)
                 elif text_part:
                     draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
-                    x_pos += font_medium.getsize(text_part)[0]
+                    x_pos += font_medium.getbbox(text_part)[2] - font_medium.getbbox(text_part)[0]
             y_offset += max(line_height, line_max_height)
         
         y_offset += padding // 2
@@ -338,7 +338,7 @@ class POTD(commands.Cog):
                             line_max_height = max(line_max_height, latex_img.height + 12)
                         elif text_part:
                             draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
-                            x_pos += font_medium.getsize(text_part)[0]
+                            x_pos += font_medium.getbbox(text_part)[2] - font_medium.getbbox(text_part)[0]
                     y_offset += max(line_height, line_max_height)
                 y_offset += 5
         
@@ -354,7 +354,7 @@ class POTD(commands.Cog):
                         line_max_height = max(line_max_height, latex_img.height + 12)
                     elif text_part:
                         draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
-                        x_pos += font_medium.getsize(text_part)[0]
+                        x_pos += font_medium.getbbox(text_part)[2] - font_medium.getbbox(text_part)[0]
                 y_offset += max(line_height, line_max_height)
             y_offset += padding // 2
         
