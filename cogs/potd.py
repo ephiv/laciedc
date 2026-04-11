@@ -371,10 +371,23 @@ class POTD(commands.Cog):
             except discord.InteractionResponded:
                 await inter.followup.send("An error occurred.", ephemeral=True)
 
-    @app_commands.command(name="potd", description="POTD management commands")
-    @app_commands.default_permissions(administrator=True)
+    @app_commands.command(name="potd", description="View POTD help and available commands")
     async def potd(self, inter: discord.Interaction):
-        pass
+        embed = discord.Embed(
+            title="POTD Commands",
+            color=discord.Color.blue()
+        )
+        embed.add_field(
+            name="For Users",
+            value="`/potd_submit` - Submit your answer\n`/potd_stats` - View your stats\n`/potd_leaderboard` - View leaderboard",
+            inline=False
+        )
+        embed.add_field(
+            name="For Admins",
+            value="`/potd_setchannel` - Set POTD channel\n`/potd_settime` - Set posting time\n`/potd_post` - Post now\n`/potd_preview` - Preview problem\n`/potd_status` - View settings\n`/potd_list` - List problems\n`/potd_add` - Add problem",
+            inline=False
+        )
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="potd_setchannel", description="Set POTD channel")
     @app_commands.describe(channel="Channel for POTD posts")
@@ -573,7 +586,21 @@ class POTD(commands.Cog):
         for p in self.problems:
             lines.append(f"- [{p['id']}] {p.get('source', 'Unknown')} ({p.get('difficulty', 'N/A')})")
         
-        await inter.response.send_message("```\n" + "\n".join(lines) + "```")
+        content = "\n".join(lines)
+        if len(content) > 1990:
+            await inter.response.send_message(
+                f"Problem list too long. Showing {len(self.problems)} problems.",
+                ephemeral=True
+            )
+            for i in range(0, len(lines), 25):
+                chunk = lines[i:i+25]
+                msg = "```\n" + "\n".join(chunk) + "```"
+                if i == 0:
+                    await inter.followup.send(msg)
+                else:
+                    await inter.channel.send(msg)
+        else:
+            await inter.response.send_message("```\n" + content + "```")
 
     @app_commands.command(name="potd_reload", description="Reload problems from disk")
     async def potd_reload(self, inter: discord.Interaction):
