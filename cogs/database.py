@@ -88,6 +88,57 @@ def init_database():
         CREATE INDEX IF NOT EXISTS idx_xp_guild ON xp_data(xp DESC, guild_id)
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS potd_settings (
+            guild_id INTEGER PRIMARY KEY,
+            channel_id INTEGER,
+            posting_hour INTEGER DEFAULT 9,
+            posting_minute INTEGER DEFAULT 0
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS potd_current (
+            guild_id INTEGER PRIMARY KEY,
+            problem_id TEXT,
+            posted_at DATETIME,
+            attempt_number INTEGER DEFAULT 1
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS potd_solves (
+            user_id INTEGER,
+            guild_id INTEGER,
+            problem_id TEXT,
+            solved_at DATETIME,
+            PRIMARY KEY (user_id, guild_id, problem_id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS potd_stats (
+            user_id INTEGER,
+            guild_id INTEGER,
+            total_solves INTEGER DEFAULT 0,
+            current_streak INTEGER DEFAULT 0,
+            best_streak INTEGER DEFAULT 0,
+            last_solved_problem TEXT,
+            PRIMARY KEY (user_id, guild_id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS potd_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id INTEGER,
+            problem_id TEXT,
+            posted_at DATETIME,
+            attempt_number INTEGER,
+            UNIQUE(guild_id, problem_id, attempt_number)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -547,6 +598,172 @@ def get_enabled_level_roles(guild_id: int) -> list[dict]:
     cursor.execute(
         "SELECT level, role_name, role_color, created_role_id FROM level_role_configs WHERE guild_id = ? AND is_enabled = 1 ORDER BY level ASC",
         (guild_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+# POTD Database Functions
+
+def get_potd_settings(guild_id: int) -> Optional[dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM potd_settings WHERE guild_id = ?", (guild_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+
+def set_potd_settings(guild_id: int, channel_id: int = None, posting_hour: int = None, posting_minute: int = None):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO potd_settings (guild_id) VALUES (?)", (guild_id,))
+    
+    if channel_id is not None:
+        cursor.execute("UPDATE potd_settings SET channel_id = ? WHERE guild_id = ?", (channel_id, guild_id))
+    if posting_hour is not None:
+        cursor.execute("UPDATE potd_settings SET posting_hour = ? WHERE guild_id = ?", (posting_hour, guild_id))
+    if posting_minute is not None:
+        cursor.execute("UPDATE potd_settings SET posting_minute = ? WHERE guild_id = ?", (posting_minute, guild_id))
+    
+    conn.commit()
+    conn.close()
+
+
+def get_potd_current(guild_id: int) -> Optional[dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM potd_current WHERE guild_id = ?", (guild_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+
+def set_potd_current(guild_id: int, problem_id: str, attempt_number: int = 1):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO potd_current (guild_id, problem_id, posted_at, attempt_number) VALUES (?, ?, ?, ?)",
+        (guild_id, problem_id, datetime.utcnow(), attempt_number)
+    )
+    conn.commit()
+    conn.close()
+
+
+def add_potd_solve(user_id: int, guild_id: int, problem_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO potd_solves (user_id, guild_id, problem_id, solved_at) VALUES (?, ?, ?, ?)",
+        (user_id, guild_id, problem_id, datetime.utcnow())
+    )
+    conn.commit()
+    conn.close()
+
+
+def has_solved_potd(user_id: int, guild_id: int, problem_id: str) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT 1 FROM potd_solves WHERE user_id = ? AND guild_id = ? AND problem_id = ?",
+        (user_id, guild_id, problem_id)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row is not None
+
+
+def get_potd_stats(user_id: int, guild_id: int) -> Optional[dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM potd_stats WHERE user_id = ? AND guild_id = ?", (user_id, guild_id))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+
+def update_potd_stats(user_id: int, guild_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO potd_stats (user_id, guild_id, total_solves, current_streak, best_streak) VALUES (?, ?, 0, 0, 0)",
+        (user_id, guild_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def increment_potd_solves(user_id: int, guild_id: int, problem_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "INSERT OR IGNORE INTO potd_stats (user_id, guild_id, total_solves, current_streak, best_streak) VALUES (?, ?, 0, 0, 0)",
+        (user_id, guild_id)
+    )
+    
+    cursor.execute(
+        "UPDATE potd_stats SET total_solves = total_solves + 1, current_streak = current_streak + 1, last_solved_problem = ? WHERE user_id = ? AND guild_id = ?",
+        (problem_id, user_id, guild_id)
+    )
+    
+    cursor.execute(
+        "UPDATE potd_stats SET best_streak = MAX(best_streak, current_streak) WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id)
+    )
+    
+    conn.commit()
+    conn.close()
+
+
+def get_potd_solvers(problem_id: str, guild_id: int) -> list:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT user_id FROM potd_solves WHERE problem_id = ? AND guild_id = ?",
+        (problem_id, guild_id)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
+
+
+def get_attempt_number(problem_id: str, guild_id: int) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT MAX(attempt_number) FROM potd_history WHERE problem_id = ? AND guild_id = ?",
+        (problem_id, guild_id)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row and row[0] else 0
+
+
+def add_potd_history(guild_id: int, problem_id: str, attempt_number: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO potd_history (guild_id, problem_id, posted_at, attempt_number) VALUES (?, ?, ?, ?)",
+        (guild_id, problem_id, datetime.utcnow(), attempt_number)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_potd_leaderboard(guild_id: int, limit: int = 10) -> list:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT user_id, total_solves, current_streak, best_streak FROM potd_stats WHERE guild_id = ? ORDER BY total_solves DESC LIMIT ?",
+        (guild_id, limit)
     )
     rows = cursor.fetchall()
     conn.close()

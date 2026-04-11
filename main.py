@@ -65,6 +65,7 @@ async def load_cogs():
         "cogs.usermanagement",
         "cogs.automod",
         "cogs.xp",
+        "cogs.potd",
     ]
     
     for cog in cogs_to_load:
