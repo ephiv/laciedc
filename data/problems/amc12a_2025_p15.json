@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p15",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "A set of numbers is called sum-free if whenever $x$ and $y$ are (not necessarily distinct) elements of the set, $x + y$ is not an element of the set. What is the greatest possible number of elements in a sum-free subset of $\\{1, 2, 3, \\ldots, 20\\}$?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $8$",
+    "B. $9$",
+    "C. $10$",
+    "D. $11$",
+    "E. $12$"
+  ]
+}

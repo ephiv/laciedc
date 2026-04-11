@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p01",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "What is the value of $101 \\cdot 9901 - 99 \\cdot 10{,}101$?",
+  "answer": "A",
+  "difficulty": "Easy",
+  "options": [
+    "A. $2$",
+    "B. $20$",
+    "C. $21$",
+    "D. $200$",
+    "E. $220$"
+  ]
+}

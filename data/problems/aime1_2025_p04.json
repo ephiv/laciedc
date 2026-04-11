@@ -1,0 +1,8 @@
+{
+  "id": "aime1_2025_p04",
+  "source": "2025 AIME I",
+  "type": "open",
+  "problem": "Find the number of ordered pairs $(x, y)$, where both $x$ and $y$ are integers between $-100$ and $100$ inclusive, such that $12x^2 - xy - 6y^2 = 0$.",
+  "answer": "117",
+  "difficulty": "Easy"
+}

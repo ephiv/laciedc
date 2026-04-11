@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p16",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Triangle $\\triangle ABC$ has side lengths $AB = 80$, $BC = 45$, and $AC = 75$. The bisector of $\\angle B$ and the altitude to side $\\overline{AB}$ intersect at point $P$. What is $BP$?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $18$",
+    "B. $19$",
+    "C. $20$",
+    "D. $21$",
+    "E. $22$"
+  ]
+}

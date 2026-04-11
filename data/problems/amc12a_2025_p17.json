@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p17",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "The polynomial $(z + i)(z + 2i)(z + 3i) + 10$ has three roots in the complex plane. What is the area of the triangle formed by these roots?",
+  "answer": "A",
+  "difficulty": "Hard",
+  "options": [
+    "A. $6$",
+    "B. $8$",
+    "C. $10$",
+    "D. $12$",
+    "E. $14$"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p04",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "What is the least value of $n$ such that $n!$ is a multiple of $2024$?",
+  "answer": "D",
+  "difficulty": "Easy",
+  "options": [
+    "A. $11$",
+    "B. $21$",
+    "C. $22$",
+    "D. $23$",
+    "E. $253$"
+  ]
+}

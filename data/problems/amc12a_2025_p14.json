@@ -1,0 +1,19 @@
+{
+  "id": "amc12a_2025_p14",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Points $F$, $G$, and $H$ are collinear with $G$ between $F$ and $H$. The ellipse with foci at $G$ and $H$ is internally tangent to the ellipse with foci at $F$ and $G$. The two ellipses have the same eccentricity $e$, and the ratio of their areas is $2025$. What is $e$?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $\\dfrac{3}{5}$",
+    "B. $\\dfrac{16}{25}$",
+    "C. $\\dfrac{4}{5}$",
+    "D. $\\dfrac{22}{23}$",
+    "E. $\\dfrac{44}{45}$"
+  ],
+  "diagram": {
+    "type": "image",
+    "path": "images/amc12a_2025_p14.jpg"
+  }
+}

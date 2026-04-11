@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p22",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Three real numbers are chosen independently and uniformly at random between $0$ and $1$. What is the probability that the greatest of these three numbers is greater than $2$ times each of the other two numbers?",
+  "answer": "E",
+  "difficulty": "Hard",
+  "options": [
+    "A. $\\dfrac{1}{12}$",
+    "B. $\\dfrac{1}{9}$",
+    "C. $\\dfrac{1}{8}$",
+    "D. $\\dfrac{1}{6}$",
+    "E. $\\dfrac{1}{4}$"
+  ]
+}

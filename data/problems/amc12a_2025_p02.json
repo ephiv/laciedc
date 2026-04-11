@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p02",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "A box contains $10$ pounds of a nut mix that is $50$ percent peanuts, $20$ percent cashews, and $30$ percent almonds. A second nut mix containing $20$ percent peanuts, $40$ percent cashews, and $40$ percent almonds is added to the box resulting in a new nut mix that is $40$ percent peanuts. How many pounds of cashews are now in the box?",
+  "answer": "B",
+  "difficulty": "Easy",
+  "options": [
+    "A. $3.5$",
+    "B. $4$",
+    "C. $4.5$",
+    "D. $5$",
+    "E. $6$"
+  ]
+}

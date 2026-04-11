@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p03",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The number $2024$ is written as the sum of not necessarily distinct two-digit numbers. What is the least number of two-digit numbers needed to write this sum?",
+  "answer": "B",
+  "difficulty": "Easy",
+  "options": [
+    "A. $20$",
+    "B. $21$",
+    "C. $22$",
+    "D. $23$",
+    "E. $24$"
+  ]
+}

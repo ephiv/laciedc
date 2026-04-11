@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p06",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Six chairs are arranged around a round table. Two students and two teachers randomly select four of the chairs to sit in. What is the probability that the two students will sit in two adjacent chairs and the two teachers will also sit in two adjacent chairs?",
+  "answer": "B",
+  "difficulty": "Medium",
+  "options": [
+    "A. $\\dfrac{1}{6}$",
+    "B. $\\dfrac{1}{5}$",
+    "C. $\\dfrac{2}{9}$",
+    "D. $\\dfrac{3}{13}$",
+    "E. $\\dfrac{1}{4}$"
+  ]
+}

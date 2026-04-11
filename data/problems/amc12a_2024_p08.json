@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p08",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "How many angles $\\theta$ with $0 \\le \\theta \\le 2\\pi$ satisfy $\\log(\\sin(3\\theta)) + \\log(\\cos(2\\theta)) = 0$?",
+  "answer": "A",
+  "difficulty": "Medium",
+  "options": [
+    "A. $0$",
+    "B. $1$",
+    "C. $2$",
+    "D. $3$",
+    "E. $4$"
+  ]
+}

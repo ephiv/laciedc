@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p11",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "The orthocenter of a triangle is the concurrent intersection of the three (possibly extended) altitudes. What is the sum of the coordinates of the orthocenter of the triangle whose vertices are $A(2, 31)$, $B(8, 27)$, and $C(18, 27)$?",
+  "answer": "A",
+  "difficulty": "Medium",
+  "options": [
+    "A. $5$",
+    "B. $17$",
+    "C. $10 + 4\\sqrt{17} + 2\\sqrt{13}$",
+    "D. $\\dfrac{113}{3}$",
+    "E. $54$"
+  ]
+}

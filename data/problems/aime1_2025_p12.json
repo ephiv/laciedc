@@ -1,0 +1,8 @@
+{
+  "id": "aime1_2025_p12",
+  "source": "2025 AIME I",
+  "type": "open",
+  "problem": "The set of points in $3$-dimensional coordinate space that lie in the plane $x + y + z = 75$ whose coordinates satisfy the inequalities $x - yz < y - zx < z - xy$ forms three disjoint convex regions. Exactly one of those regions has finite area. The area of this finite region can be expressed as $a\\sqrt{b}$, where $a$ and $b$ are positive integers and $b$ is squarefree. Find $a + b$.",
+  "answer": "510",
+  "difficulty": "Hard"
+}

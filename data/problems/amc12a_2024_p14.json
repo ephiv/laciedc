@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p14",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The numbers in each row and each column of a $5 \\times 5$ array of integers form arithmetic progressions of length $5$. The entries in positions $(5,5)$, $(2,4)$, $(4,3)$, and $(3,1)$ are $0$, $48$, $16$, and $12$, respectively. What number is in position $(1,2)$?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $19$",
+    "B. $24$",
+    "C. $29$",
+    "D. $34$",
+    "E. $39$"
+  ]
+}

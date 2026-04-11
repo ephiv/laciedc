@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p25",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "For how many quadruples of integers $(a, b, c, d)$, where $|a|, |b|, |c|, |d| \\le 5$ and $c$ and $d$ are not both $0$, is the graph of $y = \\dfrac{ax+b}{cx+d}$ symmetric about the line $y = x$?",
+  "answer": "B",
+  "difficulty": "Hard",
+  "options": [
+    "A. $1282$",
+    "B. $1292$",
+    "C. $1310$",
+    "D. $1320$",
+    "E. $1330$"
+  ]
+}

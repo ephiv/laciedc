@@ -1,0 +1,19 @@
+{
+  "id": "amc12a_2025_p24",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "A circle of radius $r$ is surrounded by $12$ circles of radius $1$, externally tangent to the central circle and sequentially tangent to each other. Then $r$ can be written as $\\sqrt{a} + \\sqrt{b} + c$, where $a, b, c$ are integers. What is $a + b + c$?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $3$",
+    "B. $5$",
+    "C. $7$",
+    "D. $9$",
+    "E. $11$"
+  ],
+  "diagram": {
+    "type": "image",
+    "path": "images/amc12a_2025_p24.jpg"
+  }
+}

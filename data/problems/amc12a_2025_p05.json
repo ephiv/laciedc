@@ -1,0 +1,19 @@
+{
+  "id": "amc12a_2025_p05",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "In the figure below, the outside square contains infinitely many squares, each with the same center and sides parallel to the outside square. The ratio of the side length of a square to the side length of the next inner square is $k$, where $0 < k < 1$. The spaces between squares are alternately shaded. The area of the shaded portion of the figure is $64\\%$ of the area of the original square. What is $k$?",
+  "answer": "D",
+  "difficulty": "Easy",
+  "options": [
+    "A. $\\dfrac{3}{5}$",
+    "B. $\\dfrac{16}{25}$",
+    "C. $\\dfrac{2}{3}$",
+    "D. $\\dfrac{3}{4}$",
+    "E. $\\dfrac{4}{5}$"
+  ],
+  "diagram": {
+    "type": "image",
+    "path": "images/amc12a_2025_p05.png"
+  }
+}

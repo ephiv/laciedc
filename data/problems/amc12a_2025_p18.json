@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p18",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "How many ordered triples $(x, y, z)$ of distinct nonneg integers $\\le 8$ satisfy $xy > z$, $zx > y$, and $yz > x$?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $36$",
+    "B. $84$",
+    "C. $186$",
+    "D. $336$",
+    "E. $486$"
+  ]
+}

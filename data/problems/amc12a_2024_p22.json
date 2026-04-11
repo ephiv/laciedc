@@ -1,0 +1,19 @@
+{
+  "id": "amc12a_2024_p22",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The figure shows a dotted grid $8$ cells wide and $3$ cells tall, consisting of $1'' \\times 1''$ squares. Carl places $1$-inch toothpicks along some sides of the squares to create a closed loop that does not intersect itself. The numbers in cells indicate the number of sides covered; any number of toothpicks are allowed if no number is written. In how many ways can Carl place the toothpicks?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $130$",
+    "B. $140$",
+    "C. $146$",
+    "D. $162$",
+    "E. $196$"
+  ],
+  "diagram": {
+    "type": "image",
+    "path": "images/amc12a_2024_p22.jpg"
+  }
+}

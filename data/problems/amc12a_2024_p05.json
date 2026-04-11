@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p05",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "A data set containing $20$ numbers, some of which are $6$, has mean $45$. When all the $6$s are removed, the data set has mean $66$. How many $6$s were in the original data set?",
+  "answer": "D",
+  "difficulty": "Easy",
+  "options": [
+    "A. $4$",
+    "B. $5$",
+    "C. $6$",
+    "D. $7$",
+    "E. $8$"
+  ]
+}

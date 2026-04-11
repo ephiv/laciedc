@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p21",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "Suppose $a_1 = 2$ and the sequence $(a_n)$ satisfies $\\dfrac{a_n - 1}{n-1} = \\dfrac{a_{n-1}+1}{n}$ for all $n \\ge 2$. What is $\\left\\lfloor \\displaystyle\\sum_{n=1}^{100} a_n^2 \\right\\rfloor$?",
+  "answer": "B",
+  "difficulty": "Hard",
+  "options": [
+    "A. $338{,}550$",
+    "B. $338{,}551$",
+    "C. $338{,}552$",
+    "D. $338{,}553$",
+    "E. $338{,}554$"
+  ]
+}

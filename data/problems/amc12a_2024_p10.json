@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p10",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "Let $\\alpha$ be the radian measure of the smallest angle in a $3$-$4$-$5$ right triangle. Let $\\beta$ be the radian measure of the smallest angle in a $7$-$24$-$25$ right triangle. In terms of $\\alpha$, what is $\\beta$?",
+  "answer": "C",
+  "difficulty": "Medium",
+  "options": [
+    "A. $\\dfrac{\\alpha}{3}$",
+    "B. $\\alpha - \\dfrac{\\pi}{8}$",
+    "C. $\\dfrac{\\pi}{2} - 2\\alpha$",
+    "D. $\\dfrac{\\alpha}{2}$",
+    "E. $\\pi - 4\\alpha$"
+  ]
+}

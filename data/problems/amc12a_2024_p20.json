@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p20",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "Points $P$ and $Q$ are chosen uniformly and independently at random on sides $\\overline{AB}$ and $\\overline{AC}$, respectively, of equilateral triangle $\\triangle ABC$. Which of the following intervals contains the probability that the area of $\\triangle APQ$ is less than half the area of $\\triangle ABC$?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $\\left[\\dfrac{3}{8}, \\dfrac{1}{2}\\right]$",
+    "B. $\\left(\\dfrac{1}{2}, \\dfrac{2}{3}\\right]$",
+    "C. $\\left(\\dfrac{2}{3}, \\dfrac{3}{4}\\right]$",
+    "D. $\\left(\\dfrac{3}{4}, \\dfrac{7}{8}\\right]$",
+    "E. $\\left(\\dfrac{7}{8}, 1\\right]$"
+  ]
+}

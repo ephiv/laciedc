@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p07",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "In $\\triangle ABC$, $\\angle ABC = 90^\\circ$ and $BA = BC = \\sqrt{2}$. Points $P_1, P_2, \\ldots, P_{2024}$ lie on hypotenuse $\\overline{AC}$ so that $AP_1 = P_1P_2 = \\cdots = P_{2023}P_{2024} = P_{2024}C$. What is the length of the vector sum $\\overrightarrow{BP_1} + \\overrightarrow{BP_2} + \\cdots + \\overrightarrow{BP_{2024}}$?",
+  "answer": "D",
+  "difficulty": "Medium",
+  "options": [
+    "A. $1012$",
+    "B. $1012$",
+    "C. $2023$",
+    "D. $2024$",
+    "E. $2025$"
+  ]
+}

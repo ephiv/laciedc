@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p13",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Let $C = \\{1, 2, 3, \\ldots, 13\\}$. Let $N$ be the greatest integer such that there exists a subset of $C$ with $N$ elements containing no five consecutive integers. Suppose $N$ integers are chosen at random from $C$ without replacement. What is the probability that the chosen elements do not include five consecutive integers?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $\\dfrac{3}{130}$",
+    "B. $\\dfrac{3}{143}$",
+    "C. $\\dfrac{5}{143}$",
+    "D. $\\dfrac{1}{26}$",
+    "E. $\\dfrac{5}{78}$"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "amc12a_2025_p20",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "The base of the pentahedron shown is a $13 \\times 8$ rectangle. Its lateral faces are two isosceles triangles with base $8$ and congruent sides $13$, and two isosceles trapezoids with bases $7$ and $13$ and nonparallel sides $13$. What is the volume of the pentahedron?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $416$",
+    "B. $520$",
+    "C. $528$",
+    "D. $676$",
+    "E. $832$"
+  ],
+  "diagram": {
+    "type": "image",
+    "path": "images/amc12a_2025_p20.jpg"
+  }
+}

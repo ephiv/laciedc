@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p03",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "A team of students is going to compete against a team of teachers in a trivia contest. The total number of students and teachers is $15$. Ash, a cousin of one of the students, wants to join the contest. If Ash plays with the students, the average age on that team will increase from $12$ to $14$. If Ash plays with the teachers, the average age on that team will decrease from $55$ to $52$. How old is Ash?",
+  "answer": "A",
+  "difficulty": "Easy",
+  "options": [
+    "A. $28$",
+    "B. $29$",
+    "C. $30$",
+    "D. $32$",
+    "E. $33$"
+  ]
+}

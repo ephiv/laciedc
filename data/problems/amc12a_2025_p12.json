@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p12",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "The harmonic mean of a collection of numbers is the reciprocal of the arithmetic mean of the reciprocals of the numbers. What is the harmonic mean of all the real roots of $\\displaystyle\\prod_{k=1}^{2025}(kx^2 - 4x - 3) = 0$?",
+  "answer": "B",
+  "difficulty": "Medium",
+  "options": [
+    "A. $-\\dfrac{5}{3}$",
+    "B. $-\\dfrac{3}{2}$",
+    "C. $-\\dfrac{6}{5}$",
+    "D. $-\\dfrac{5}{6}$",
+    "E. $-\\dfrac{2}{3}$"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p11",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "There are exactly $K$ positive integers $b$ with $5 \\le b \\le 2024$ such that the base-$b$ integer $2024_b$ is divisible by $16$. What is the sum of the digits of $K$?",
+  "answer": "D",
+  "difficulty": "Medium",
+  "options": [
+    "A. $16$",
+    "B. $17$",
+    "C. $18$",
+    "D. $20$",
+    "E. $21$"
+  ]
+}

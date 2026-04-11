@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p24",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "A disphenoid is a tetrahedron whose four triangular faces are congruent to one another. What is the least total surface area of a disphenoid whose faces are scalene triangles with integer side lengths?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $\\sqrt{3}$",
+    "B. $3\\sqrt{15}$",
+    "C. $15$",
+    "D. $15\\sqrt{7}$",
+    "E. $24\\sqrt{6}$"
+  ]
+}

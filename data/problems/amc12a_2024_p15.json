@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p15",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The roots of $x^3 + 2x^2 - x + 3$ are $p$, $q$, and $r$. What is the value of $(p^2+4)(q^2+4)(r^2+4)$?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $64$",
+    "B. $75$",
+    "C. $100$",
+    "D. $125$",
+    "E. $144$"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p25",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Polynomials $P(x)$ and $Q(x)$ each have degree $3$ and leading coefficient $1$, and their roots are all elements of $\\{1,2,3,4,5\\}$. The function $f(x) = \\frac{P(x)}{Q(x)}$ has the property that there exist real numbers $a < b < c < d$ such that the set of all real $x$ with $f(x) \\le 0$ consists of the closed interval $[a,b]$ together with the open interval $(c,d)$. How many functions $f(x)$ are possible?",
+  "answer": "E",
+  "difficulty": "Hard",
+  "options": [
+    "A. $7$",
+    "B. $9$",
+    "C. $11$",
+    "D. $12$",
+    "E. $13$"
+  ]
+}

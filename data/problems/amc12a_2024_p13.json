@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p13",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The graph of $y = e^{x+1} + e^{-x} - 2$ has an axis of symmetry. What is the reflection of the point $\\left(-1, \\dfrac{1}{2}\\right)$ over this axis?",
+  "answer": "D",
+  "difficulty": "Medium",
+  "options": [
+    "A. $\\left(-1, -\\dfrac{3}{2}\\right)$",
+    "B. $(-1, 0)$",
+    "C. $\\left(-1, \\dfrac{1}{2}\\right)$",
+    "D. $\\left(0, \\dfrac{1}{2}\\right)$",
+    "E. $\\left(3, \\dfrac{1}{2}\\right)$"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p19",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "Cyclic quadrilateral $ABCD$ has lengths $BC = CD = 3$ and $DA = 5$ with $\\angle CDA = 120^\\circ$. What is the length of the shorter diagonal of $ABCD$?",
+  "answer": "D",
+  "difficulty": "Hard",
+  "options": [
+    "A. $\\dfrac{31}{7}$",
+    "B. $\\dfrac{33}{7}$",
+    "C. $5$",
+    "D. $\\dfrac{39}{7}$",
+    "E. $\\dfrac{41}{7}$"
+  ]
+}

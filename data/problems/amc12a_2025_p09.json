@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p09",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Let $w = 2 + i$. What real number $r$ has the property that $r$, $w$, and $w^2$ are three collinear points in the complex plane?",
+  "answer": "E",
+  "difficulty": "Medium",
+  "options": [
+    "A. $\\dfrac{3}{4}$",
+    "B. $1$",
+    "C. $\\dfrac{7}{5}$",
+    "D. $\\dfrac{3}{2}$",
+    "E. $\\dfrac{5}{3}$"
+  ]
+}

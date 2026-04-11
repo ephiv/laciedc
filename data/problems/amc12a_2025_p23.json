@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p23",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Call a positive integer fair if no digit is used more than once, it has no $0$s, and no digit is adjacent to two greater digits. For example, $196$, $23$, and $12463$ are fair, but $1546$, $320$, and $34321$ are not fair. How many fair positive integers are there?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $511$",
+    "B. $2584$",
+    "C. $9841$",
+    "D. $17711$",
+    "E. $19682$"
+  ]
+}

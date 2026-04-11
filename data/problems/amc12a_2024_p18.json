@@ -1,0 +1,19 @@
+{
+  "id": "amc12a_2024_p18",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "On top of a rectangular card with sides of length $1$ and $2 + \\sqrt{3}$, an identical card is placed so that two of their diagonals line up ($\\overline{AC}$, in this case). Continue the process, adding a third card to the second, and so on, lining up successive diagonals after rotating clockwise. In total, how many cards must be used until a vertex of a new card lands exactly on the vertex labeled $B$?",
+  "answer": "A",
+  "difficulty": "Hard",
+  "options": [
+    "A. $6$",
+    "B. $8$",
+    "C. $10$",
+    "D. $12$",
+    "E. No new vertex will land on $B$."
+  ],
+  "diagram": {
+    "type": "image",
+    "path": "images/amc12a_2024_p18.jpg"
+  }
+}

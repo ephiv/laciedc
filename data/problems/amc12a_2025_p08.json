@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p08",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Pentagon $ABCDE$ is inscribed in a circle, and $\\angle BEC = \\angle CED = 30^\\circ$. Let $\\overline{AC}$ and $\\overline{BD}$ intersect at point $F$, and suppose that $AB = 9$ and $AD = 24$. What is $BF$?",
+  "answer": "E",
+  "difficulty": "Medium",
+  "options": [
+    "A. $\\dfrac{57}{11}$",
+    "B. $\\dfrac{59}{11}$",
+    "C. $\\dfrac{60}{11}$",
+    "D. $\\dfrac{61}{11}$",
+    "E. $\\dfrac{63}{11}$"
+  ]
+}

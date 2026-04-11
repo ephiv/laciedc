@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p06",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The product of three integers is $60$. What is the least possible positive sum of the three integers?",
+  "answer": "B",
+  "difficulty": "Easy",
+  "options": [
+    "A. $2$",
+    "B. $3$",
+    "C. $5$",
+    "D. $6$",
+    "E. $13$"
+  ]
+}

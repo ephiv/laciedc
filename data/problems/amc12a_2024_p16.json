@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p16",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "A set of $12$ tokens \u00e2\u20ac\u201d $3$ red, $2$ white, $1$ blue, and $6$ black \u00e2\u20ac\u201d is distributed at random to $3$ game players, $4$ tokens per player. The probability that some player gets all the red tokens, another gets all the white tokens, and the remaining player gets the blue token can be written as $\\dfrac{m}{n}$, where $m$ and $n$ are relatively prime positive integers. What is $m + n$?",
+  "answer": "C",
+  "difficulty": "Hard",
+  "options": [
+    "A. $387$",
+    "B. $388$",
+    "C. $389$",
+    "D. $390$",
+    "E. $391$"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p04",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "Agnes writes the following four statements on a blank piece of paper:\n(I) At least one of these statements is true.\n(II) At least two of these statements are true.\n(III) At least two of these statements are false.\n(IV) At least one of these statements is false.\nEach statement is either true or false. How many false statements did Agnes write on the paper?",
+  "answer": "B",
+  "difficulty": "Easy",
+  "options": [
+    "A. $0$",
+    "B. $1$",
+    "C. $2$",
+    "D. $3$",
+    "E. $4$"
+  ]
+}

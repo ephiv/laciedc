@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p21",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "There is a unique ordered triple $(a, k, m)$ of nonneg integers such that $\\dfrac{4^a + 4^{a+k} + 4^{a+2k} + \\cdots + 4^{a+mk}}{2^a + 2^{a+k} + 2^{a+2k} + \\cdots + 2^{a+mk}} = 964.$ What is $a + k + m$?",
+  "answer": "A",
+  "difficulty": "Hard",
+  "options": [
+    "A. $8$",
+    "B. $9$",
+    "C. $10$",
+    "D. $11$",
+    "E. $12$"
+  ]
+}

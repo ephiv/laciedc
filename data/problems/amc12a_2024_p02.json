@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p02",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "A model used to estimate the time to hike to the top of a mountain is $T = aL + bG$, where $a$ and $b$ are constants, $T$ is time in minutes, $L$ is trail length in miles, and $G$ is altitude gain in feet. The model estimates $69$ minutes for a trail that is $1.5$ miles long ascending $800$ feet, and also for a trail that is $1.2$ miles long ascending $1100$ feet. How many minutes does the model estimate for a trail that is $4.2$ miles long ascending $4000$ feet?",
+  "answer": "B",
+  "difficulty": "Easy",
+  "options": [
+    "A. $240$",
+    "B. $246$",
+    "C. $252$",
+    "D. $258$",
+    "E. $264$"
+  ]
+}

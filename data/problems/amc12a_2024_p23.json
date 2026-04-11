@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p23",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "What is the value of $\\tan^2\\dfrac{\\pi}{16} \\cdot \\tan^2\\dfrac{3\\pi}{16} + \\tan^2\\dfrac{\\pi}{16} \\cdot \\tan^2\\dfrac{5\\pi}{16} + \\tan^2\\dfrac{3\\pi}{16} \\cdot \\tan^2\\dfrac{7\\pi}{16} + \\tan^2\\dfrac{5\\pi}{16} \\cdot \\tan^2\\dfrac{7\\pi}{16}$?",
+  "answer": "B",
+  "difficulty": "Hard",
+  "options": [
+    "A. $28$",
+    "B. $68$",
+    "C. $70$",
+    "D. $72$",
+    "E. $84$"
+  ]
+}

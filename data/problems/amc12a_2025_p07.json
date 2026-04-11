@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2025_p07",
+  "source": "2025 AMC 12A",
+  "type": "mcq",
+  "problem": "In a certain alien world, the maximum running speed $v$ of an organism depends on its number of toes $n$ and number of eyes $m$ via $v = kn^a m^b$ centimeters per hour, where $k, a, b$ are integer constants. In a population where all organisms have $5$ toes, $\\log v = 4 + 2\\log m$; and in a population where all organisms have $25$ eyes, $\\log v = 4 + 4\\log n$ (base $10$). What is $k + a + b$?",
+  "answer": "C",
+  "difficulty": "Medium",
+  "options": [
+    "A. $20$",
+    "B. $21$",
+    "C. $22$",
+    "D. $23$",
+    "E. $24$"
+  ]
+}

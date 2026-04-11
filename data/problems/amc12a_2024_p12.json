@@ -1,0 +1,15 @@
+{
+  "id": "amc12a_2024_p12",
+  "source": "2024 AMC 12A",
+  "type": "mcq",
+  "problem": "The first three terms of a geometric sequence are the integers $a$, $720$, and $b$, where $a < 720 < b$. What is the sum of the digits of the least possible value of $b$?",
+  "answer": "E",
+  "difficulty": "Medium",
+  "options": [
+    "A. $9$",
+    "B. $12$",
+    "C. $16$",
+    "D. $18$",
+    "E. $21$"
+  ]
+}
