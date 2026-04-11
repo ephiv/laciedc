@@ -8,6 +8,7 @@ import os
 import random
 import textwrap
 import asyncio
+import aiohttp
 
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
@@ -177,23 +178,7 @@ class POTD(commands.Cog):
         padding = 40
         line_height = 30
         header_height = 80
-        footer_height = 30
-        
-        estimated_height = header_height + padding * 3
-        estimated_height += len(textwrap.wrap(problem['problem'], 85)) * line_height
-        
-        if problem.get('parts'):
-            estimated_height += len(problem['parts']) * line_height + padding
-        
-        if problem.get('diagram'):
-            estimated_height += 300
-        
-        estimated_height += footer_height
-        
-        img_height = max(400, estimated_height)
-        
-        img = Image.new('RGB', (img_width, img_height), 'white')
-        draw = ImageDraw.Draw(img)
+        footer_padding = 50
         
         try:
             font_large = ImageFont.truetype("arial.ttf", 24)
@@ -203,6 +188,39 @@ class POTD(commands.Cog):
             font_large = ImageFont.load_default()
             font_medium = ImageFont.load_default()
             font_small = ImageFont.load_default()
+        
+        wrapped = textwrap.wrap(problem['problem'], 85)
+        problem_lines = len(wrapped)
+        
+        parts_lines = 0
+        if problem.get('type') == 'parts' and problem.get('parts'):
+            for part in problem['parts']:
+                parts_lines += len(textwrap.wrap(part, 83))
+        
+        mcq_lines = 0
+        if problem.get('type') == 'mcq' and problem.get('options'):
+            mcq_lines = len(problem['options'])
+        
+        diagram_img = None
+        if problem.get('diagram'):
+            diagram_img = await self.render_diagram(problem['diagram'])
+        
+        content_height = (
+            header_height + padding +
+            problem_lines * line_height +
+            (padding // 2) +
+            parts_lines * line_height +
+            (len(problem.get('parts', [])) * 5 if problem.get('parts') else 0) +
+            mcq_lines * line_height +
+            (padding // 2 if mcq_lines else 0) +
+            (padding * 2 + (diagram_img.height if diagram_img else 0)) +
+            footer_padding
+        )
+        
+        img_height = max(400, content_height)
+        
+        img = Image.new('RGB', (img_width, img_height), 'white')
+        draw = ImageDraw.Draw(img)
         
         draw.rectangle([0, 0, img_width, header_height], fill=HEADER_COLOR)
         
@@ -236,7 +254,6 @@ class POTD(commands.Cog):
         
         y_offset = header_height + padding
         
-        wrapped = textwrap.wrap(problem['problem'], 85)
         for line in wrapped:
             draw.text((padding, y_offset), line, fill=TEXT_COLOR, font=font_medium)
             y_offset += line_height
@@ -252,21 +269,22 @@ class POTD(commands.Cog):
                 y_offset += 5
         
         if problem.get('type') == 'mcq' and problem.get('options'):
-            for i, option in enumerate(problem['options']):
+            for option in problem['options']:
                 draw.text((padding + 20, y_offset), option, fill=TEXT_COLOR, font=font_medium)
                 y_offset += line_height
             y_offset += padding // 2
         
-        if problem.get('diagram'):
+        if diagram_img:
             y_offset += padding
-            diagram_img = await self.render_diagram(problem['diagram'])
-            if diagram_img:
+            if diagram_img.mode == 'RGBA':
+                img.paste(diagram_img, (padding, y_offset), diagram_img)
+            else:
                 img.paste(diagram_img, (padding, y_offset))
-                y_offset += diagram_img.height + padding
+            y_offset += diagram_img.height + padding
         
         draw_time = f"Posted: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
         draw.text(
-            (img_width // 2, img_height - 15),
+            (img_width // 2, y_offset + 15),
             draw_time,
             fill=(150, 150, 150),
             font=font_small,
@@ -279,7 +297,9 @@ class POTD(commands.Cog):
         return buffer
 
     async def render_diagram(self, diagram: dict) -> Image.Image:
-        if diagram.get('type') == 'matplotlib':
+        diagram_type = diagram.get('type', '').lower()
+        
+        if diagram_type == 'matplotlib':
             code = diagram.get('code', '')
             try:
                 plt.clf()
@@ -289,9 +309,49 @@ class POTD(commands.Cog):
                 plt.savefig(buf, format='PNG', bbox_inches='tight', dpi=100)
                 plt.close()
                 buf.seek(0)
-                return Image.open(buf)
+                return Image.open(buf).convert('RGBA')
             except Exception:
                 return None
+        
+        elif diagram_type == 'latex':
+            latex_code = diagram.get('code', '')
+            try:
+                plt.clf()
+                fig = plt.figure(figsize=(diagram.get('width', 8), diagram.get('height', 2)))
+                ax = fig.add_axes([0, 0, 1, 1])
+                ax.text(0.5, 0.5, latex_code, fontsize=diagram.get('fontsize', 20),
+                        ha='center', va='center', usetex=False)
+                ax.axis('off')
+                
+                buf = BytesIO()
+                plt.savefig(buf, format='PNG', bbox_inches='tight', dpi=150, transparent=True)
+                plt.close()
+                buf.seek(0)
+                return Image.open(buf).convert('RGBA')
+            except Exception:
+                return None
+        
+        elif diagram_type == 'image':
+            filepath = diagram.get('path', '')
+            try:
+                if not os.path.isabs(filepath):
+                    filepath = os.path.join(PROBLEMS_DIR, filepath)
+                return Image.open(filepath).convert('RGBA')
+            except Exception:
+                return None
+        
+        elif diagram_type == 'url':
+            url = diagram.get('url', '')
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            data = await response.read()
+                            return Image.open(BytesIO(data)).convert('RGBA')
+            except Exception:
+                return None
+            return None
+        
         return None
 
     async def cog_app_command_error(
