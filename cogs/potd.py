@@ -495,19 +495,22 @@ class POTD(commands.Cog):
         self.schedule_potd(inter.guild_id)
         await inter.response.send_message(f"POTD time set to {hour:02d}:{minute:02d} UTC")
 
-    @app_commands.command(name="potd_preview", description="Preview current problem")
+    @app_commands.command(name="potd_preview", description="Preview the sample problem")
     async def potd_preview(self, inter: discord.Interaction):
-        if not self.problems:
-            await inter.response.send_message("No problems loaded!", ephemeral=True)
+        sample = None
+        for p in self.problems:
+            if p['id'] == 'sample_001':
+                sample = p
+                break
+        
+        if not sample:
+            await inter.response.send_message("Sample problem not found!", ephemeral=True)
             return
         
         await inter.response.defer()
         
-        problem = random.choice(self.problems)
-        attempt = get_attempt_number(problem['id'], inter.guild_id) + 1
-        
-        image = await self.render_problem_image(problem, attempt)
-        file = discord.File(fp=image, filename='problem_preview.png')
+        image = await self.render_problem_image(sample, 1)
+        file = discord.File(fp=image, filename='sample_problem.png')
         
         await inter.followup.send(file=file)
 
