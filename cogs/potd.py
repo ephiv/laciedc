@@ -43,18 +43,26 @@ LATEX_FONT_SIZE = 18
 
 def render_latex_to_image(latex: str, fontsize: int = LATEX_FONT_SIZE) -> Image.Image:
     """Render LaTeX expression to a PIL Image using matplotlib mathtext."""
-    fig = plt.figure(figsize=(len(latex) * 0.12 + 0.3, 0.6))
+    fig = plt.figure(figsize=(len(latex) * 0.08 + 0.3, 0.4))
     ax = fig.add_axes([0, 0, 1, 1])
     ax.text(0.5, 0.5, f'${latex}$', fontsize=fontsize, ha='center', va='center',
             usetex=False, transform=ax.transAxes)
     ax.axis('off')
     
     buf = BytesIO()
-    fig.savefig(buf, format='PNG', dpi=150, transparent=True, bbox_inches='tight',
+    fig.savefig(buf, format='PNG', dpi=100, transparent=True, bbox_inches='tight',
                 facecolor='none', edgecolor='none')
     plt.close(fig)
     buf.seek(0)
-    return Image.open(buf).convert('RGBA')
+    img = Image.open(buf).convert('RGBA')
+    
+    target_height = 24
+    if img.height > target_height:
+        scale = target_height / img.height
+        new_width = int(img.width * scale)
+        img = img.resize((new_width, target_height), Image.LANCZOS)
+    
+    return img
 
 
 def parse_latex_in_text(text: str, fontsize: int = LATEX_FONT_SIZE) -> list:
@@ -311,16 +319,15 @@ class POTD(commands.Cog):
         for line in wrapped:
             parts = parse_latex_in_text(line)
             x_pos = padding
-            line_max_height = line_height
             for text_part, latex_img in parts:
                 if latex_img:
-                    img.paste(latex_img, (x_pos, y_offset - line_height + 8), latex_img)
-                    x_pos += latex_img.width + 2
-                    line_max_height = max(line_max_height, latex_img.height + 12)
+                    y_latex = y_offset - 4
+                    img.paste(latex_img, (x_pos, y_latex), latex_img)
+                    x_pos += latex_img.width + 3
                 elif text_part:
                     draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
                     x_pos += font_medium.getbbox(text_part)[2] - font_medium.getbbox(text_part)[0]
-            y_offset += max(line_height, line_max_height)
+            y_offset += line_height
         
         y_offset += padding // 2
         
@@ -330,32 +337,30 @@ class POTD(commands.Cog):
                 for line in part_wrapped:
                     parts = parse_latex_in_text(line)
                     x_pos = padding + 20
-                    line_max_height = line_height
                     for text_part, latex_img in parts:
                         if latex_img:
-                            img.paste(latex_img, (x_pos, y_offset - line_height + 8), latex_img)
-                            x_pos += latex_img.width + 2
-                            line_max_height = max(line_max_height, latex_img.height + 12)
+                            y_latex = y_offset - 4
+                            img.paste(latex_img, (x_pos, y_latex), latex_img)
+                            x_pos += latex_img.width + 3
                         elif text_part:
                             draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
                             x_pos += font_medium.getbbox(text_part)[2] - font_medium.getbbox(text_part)[0]
-                    y_offset += max(line_height, line_max_height)
+                    y_offset += line_height
                 y_offset += 5
         
         if problem.get('type') == 'mcq' and problem.get('options'):
             for option in problem['options']:
                 parts = parse_latex_in_text(option)
                 x_pos = padding + 20
-                line_max_height = line_height
                 for text_part, latex_img in parts:
                     if latex_img:
-                        img.paste(latex_img, (x_pos, y_offset - line_height + 8), latex_img)
-                        x_pos += latex_img.width + 2
-                        line_max_height = max(line_max_height, latex_img.height + 12)
+                        y_latex = y_offset - 4
+                        img.paste(latex_img, (x_pos, y_latex), latex_img)
+                        x_pos += latex_img.width + 3
                     elif text_part:
                         draw.text((x_pos, y_offset), text_part, fill=TEXT_COLOR, font=font_medium)
                         x_pos += font_medium.getbbox(text_part)[2] - font_medium.getbbox(text_part)[0]
-                y_offset += max(line_height, line_max_height)
+                y_offset += line_height
             y_offset += padding // 2
         
         if diagram_img:
