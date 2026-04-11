@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 import random
+import asyncio
 
 from .database import (
     get_xp_data,
@@ -33,6 +34,54 @@ DAILY_BONUS_XP = 50
 
 message_cooldowns = defaultdict(dict)
 voice_sessions = {}
+
+COOLDOWN_CLEANUP_INTERVAL = 300
+
+
+def cleanup_old_cooldowns():
+    now = datetime.now(timezone.utc)
+    cutoff = MESSAGE_COOLDOWN_SECONDS * 2
+    
+    for guild_id in list(message_cooldowns.keys()):
+        for key in list(message_cooldowns[guild_id].keys()):
+            last_time = message_cooldowns[guild_id].get(key)
+            if last_time and (now - last_time).total_seconds() > cutoff:
+                del message_cooldowns[guild_id][key]
+        if not message_cooldowns[guild_id]:
+            del message_cooldowns[guild_id]
+
+
+def cleanup_old_voice_sessions():
+    now = datetime.now(timezone.utc)
+    cutoff = 3600
+    
+    for user_id in list(voice_sessions.keys()):
+        session = voice_sessions.get(user_id)
+        if session:
+            elapsed = (now - session["start_time"]).total_seconds()
+            if elapsed > cutoff:
+                del voice_sessions[user_id]
+
+
+class CooldownCleanup:
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self._task = None
+    
+    async def start(self):
+        self._task = self.bot.loop.create_task(self._cleanup_loop())
+    
+    async def _cleanup_loop(self):
+        while True:
+            try:
+                cleanup_old_cooldowns()
+                cleanup_old_voice_sessions()
+            except Exception:
+                pass
+            await asyncio.sleep(COOLDOWN_CLEANUP_INTERVAL)
+
+
+cleanup_task = None
 
 
 def calculate_level(xp: int) -> int:
@@ -84,6 +133,23 @@ class XP(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.bot.tree.add_command(levelup_group)
+        self.cleanup_task = None
+
+    async def cog_load(self):
+        self.cleanup_task = self.bot.loop.create_task(self._cleanup_loop())
+
+    async def cog_unload(self):
+        if self.cleanup_task:
+            self.cleanup_task.cancel()
+
+    async def _cleanup_loop(self):
+        while True:
+            try:
+                cleanup_old_cooldowns()
+                cleanup_old_voice_sessions()
+            except Exception:
+                pass
+            await asyncio.sleep(COOLDOWN_CLEANUP_INTERVAL)
 
     async def cog_app_command_error(
         self, inter: discord.Interaction, error: app_commands.AppCommandError
@@ -98,9 +164,9 @@ class XP(commands.Cog):
                 await inter.followup.send("You don't have permission to use this command.", ephemeral=True)
         else:
             try:
-                await inter.response.send_message(f"An error occurred: {error}", ephemeral=True)
+                await inter.response.send_message("An error occurred while processing this command.", ephemeral=True)
             except discord.InteractionResponded:
-                await inter.followup.send(f"An error occurred: {error}", ephemeral=True)
+                await inter.followup.send("An error occurred while processing this command.", ephemeral=True)
 
     @commands.hybrid_command(name="rank", description="Show your or another user's rank and XP")
     @app_commands.describe(member="The member to check (defaults to you)")
@@ -355,20 +421,27 @@ class XP(commands.Cog):
         
         last_daily = xp_data.get("last_daily_bonus")
         if last_daily:
-            last_daily_dt = datetime.fromisoformat(last_daily) if isinstance(last_daily, str) else last_daily
-            if last_daily_dt.tzinfo:
-                last_daily_dt = last_daily_dt.replace(tzinfo=None)
-            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
-            if last_daily_dt < today_start:
-                add_xp(user_id, guild_id, DAILY_BONUS_XP)
+            try:
+                if isinstance(last_daily, str):
+                    last_daily_dt = datetime.fromisoformat(last_daily).replace(tzinfo=timezone.utc)
+                else:
+                    last_daily_dt = last_daily
+                    if last_daily_dt.tzinfo is None:
+                        last_daily_dt = last_daily_dt.replace(tzinfo=timezone.utc)
+                
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                if last_daily_dt < today_start:
+                    add_xp(user_id, guild_id, DAILY_BONUS_XP)
+                    update_last_daily_bonus(user_id, guild_id)
+                    try:
+                        await message.channel.send(
+                            f"\U0001f389 {message.author.mention} earned a daily bonus of {DAILY_BONUS_XP} XP!",
+                            delete_after=5
+                        )
+                    except discord.Forbidden:
+                        pass
+            except (ValueError, TypeError):
                 update_last_daily_bonus(user_id, guild_id)
-                try:
-                    await message.channel.send(
-                        f"\U0001f389 {message.author.mention} earned a daily bonus of {DAILY_BONUS_XP} XP!",
-                        delete_after=5
-                    )
-                except discord.Forbidden:
-                    pass
         else:
             update_last_daily_bonus(user_id, guild_id)
         

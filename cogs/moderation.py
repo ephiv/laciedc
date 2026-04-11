@@ -251,15 +251,18 @@ class Moderation(commands.Cog):
         await send_mod_log(ctx.guild, embed)
 
         if duration:
-            await asyncio.sleep(self._parse_duration(duration))
-            if muted_role in member.roles:
-                try:
-                    await member.remove_roles(muted_role, reason="Mute duration expired")
-                    await ctx.guild.get_channel(ctx.channel.id).send(
-                        f"{member} has been unmuted (duration expired)."
-                    )
-                except discord.Forbidden:
-                    pass
+            asyncio.create_task(self._timed_unmute(ctx.guild, member, muted_role, self._parse_duration(duration)))
+
+    async def _timed_unmute(self, guild: discord.Guild, member: discord.Member, muted_role: discord.Role, duration_seconds: int):
+        await asyncio.sleep(duration_seconds)
+        if muted_role in member.roles:
+            try:
+                await member.remove_roles(muted_role, reason="Mute duration expired")
+                channel = guild.get_channel(member.guild.system_channel.id) if guild.system_channel else None
+                if channel:
+                    await channel.send(f"{member.mention} has been unmuted (duration expired).")
+            except (discord.Forbidden, AttributeError):
+                pass
 
     @mute.error
     async def mute_error(self, ctx: commands.Context, error: commands.CommandError):
