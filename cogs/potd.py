@@ -43,20 +43,16 @@ LATEX_FONT_SIZE = 18
 
 def render_latex_to_image(latex: str, fontsize: int = LATEX_FONT_SIZE) -> Image.Image:
     """Render LaTeX expression to a PIL Image using matplotlib mathtext."""
-    plt.figure(figsize=(len(latex) * 0.12 + 0.3, 0.6))
-    ax = plt.axes([0, 0, 1, 1])
+    fig = plt.figure(figsize=(len(latex) * 0.12 + 0.3, 0.6))
+    ax = fig.add_axes([0, 0, 1, 1])
     ax.text(0.5, 0.5, f'${latex}$', fontsize=fontsize, ha='center', va='center',
             usetex=False, transform=ax.transAxes)
     ax.axis('off')
-    plt.tight_layout(pad=0.05)
     
     buf = BytesIO()
-    try:
-        plt.savefig(buf, format='PNG', dpi=150, transparent=True, bbox_inches='tight')
-    except Exception:
-        plt.savefig(buf, format='PNG', dpi=150, transparent=True, bbox_inches='tight',
-                   facecolor='white')
-    plt.close()
+    fig.savefig(buf, format='PNG', dpi=150, transparent=True, bbox_inches='tight',
+                facecolor='none', edgecolor='none')
+    plt.close(fig)
     buf.seek(0)
     return Image.open(buf).convert('RGBA')
 
@@ -87,7 +83,7 @@ def parse_latex_in_text(text: str, fontsize: int = LATEX_FONT_SIZE) -> list:
                 img = render_latex_to_image(latex_content, fontsize + 4)
                 parts.append(('', img))
             except Exception:
-                parts.append('$$'+latex_content+'$$', None)
+                parts.append(('$$'+latex_content+'$$', None))
         
         last_end = match.end()
     
@@ -445,6 +441,7 @@ class POTD(commands.Cog):
     async def cog_app_command_error(
         self, inter: discord.Interaction, error: app_commands.AppCommandError
     ):
+        import traceback
         if isinstance(error, app_commands.errors.CommandInvokeError):
             error = error.original
         
@@ -454,10 +451,13 @@ class POTD(commands.Cog):
             except discord.InteractionResponded:
                 await inter.followup.send("You don't have permission.", ephemeral=True)
         else:
+            err_msg = f"An error occurred: {type(error).__name__}: {error}"
+            print(err_msg)
+            traceback.print_exc()
             try:
-                await inter.response.send_message("An error occurred.", ephemeral=True)
+                await inter.response.send_message(err_msg, ephemeral=True)
             except discord.InteractionResponded:
-                await inter.followup.send("An error occurred.", ephemeral=True)
+                await inter.followup.send(err_msg, ephemeral=True)
 
     @app_commands.command(name="potd", description="View POTD help and available commands")
     async def potd(self, inter: discord.Interaction):
