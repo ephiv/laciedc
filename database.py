@@ -40,6 +40,9 @@ class Database:
                     caps_threshold INT DEFAULT 15,
                     mention_threshold INT DEFAULT 5,
                     spam_threshold INT DEFAULT 3,
+                    starboard_channel_id BIGINT,
+                    starboard_threshold INT DEFAULT 5,
+                    emoji_weights JSONB DEFAULT '{"⭐": 1, "✨": 2}',
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)

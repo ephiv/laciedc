@@ -1,15 +1,15 @@
-# LacieDC - Discord Bot
+# laciedc
 
-A production-grade Discord bot with auto-moderation, appeal system, and manual moderation tools.
+a discord bot with auto-moderation, a ban appeal system, and manual moderation tools.
 
-## Prerequisites
+## prerequisites
 
-- Python 3.10 or higher
-- PostgreSQL 14+
+- python 3.10+
+- postgresql 14+
 
-## Setup
+## setup
 
-### 1. Clone and Install Dependencies
+### 1. install dependencies
 
 ```bash
 git clone <repository-url>
@@ -17,64 +17,31 @@ cd laciedc
 pip install -r requirements.txt
 ```
 
-### 2. Create PostgreSQL Server
+### 2. create a postgresql database
 
-#### Windows
-
-**Option A: Interactive Installer**
-
-1. Download PostgreSQL: https://www.postgresql.org/download/windows/
-2. Run the installer
-3. During setup:
-   - Set password for `postgres` user (remember it)
-   - Keep default port: `5432`
-4. Download and install **pgAdmin 4** (optional but recommended)
-
-**Option B: Command Line**
-
+**windows**
 ```cmd
-# After installation, open pgAdmin or psql
-# psql location: C:\Program Files\PostgreSQL\16\bin\psql.exe
-
-# Login as postgres user
 psql -U postgres
-
-# Create user (optional - can use default postgres user)
-CREATE USER myuser WITH PASSWORD 'yourpassword';
-CREATE DATABASE laciedc OWNER myuser;
-GRANT ALL PRIVILEGES ON DATABASE laciedc TO myuser;
-
+CREATE DATABASE laciedc;
 \q
 ```
 
-**Option C: Chocolatey**
-
-```cmd
-choco install postgresql -y
-# Start service
-choco install postgresql16 -y --params="/port:5432"
-```
-
-#### macOS
-
+**macos**
 ```bash
 brew install postgresql
 brew services start postgresql
 createdb laciedc
 ```
 
-#### Linux (Ubuntu/Debian)
-
+**linux (ubuntu/debian)**
 ```bash
-sudo apt update
 sudo apt install postgresql postgresql-contrib
-sudo -u postgres createuser --interactive
 sudo -u postgres createdb laciedc
 ```
 
-### 3. Configure Environment
+### 3. configure environment
 
-Copy `.env.example` to `.env` and fill in your values:
+copy `.env.example` to `.env` and fill in your values:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token_here
@@ -85,122 +52,110 @@ DB_PASSWORD=your_password
 DB_NAME=laciedc
 ```
 
-### 4. Get Discord Bot Token
+### 4. get a discord bot token
 
-1. Go to https://discord.com/developers/applications
-2. Create new application
-3. Go to Bot section
-4. Reset token and copy it
-5. Enable **Message Content Intent** in Bot tab
+1. go to https://discord.com/developers/applications
+2. create a new application → go to the **bot** tab
+3. reset and copy the token
+4. enable **message content intent** under privileged gateway intents
 
-### 5. Invite Bot to Server
+### 5. invite the bot
 
-1. Go to OAuth2 → URL Generator
-2. Scopes: `bot`
-3. Bot Permissions:
-   - `Manage Messages`
-   - `Manage Channels`
-   - `Ban Members`
-   - `Kick Members`
-   - `Mute Members`
-   - `Move Members`
-4. Copy generated URL and open it
+use oauth2 → url generator with the `bot` scope and these permissions:
+`manage messages` · `manage channels` · `ban members` · `kick members` · `mute members` · `move members`
 
-### 6. Run the Bot
+### 6. run
 
 ```bash
 python bot.py
 ```
 
-The bot will automatically create database tables on first run.
+tables are created automatically on first run. the bot also watches `cogs/` for file changes and reloads cogs automatically — no restart needed during development.
 
-## Features
+---
 
-### Auto-Moderation
+## features
 
-Automatically detects and handles:
-- Profanity
-- Spam (repeated messages)
-- Excessive caps
-- Discord invite links
-- External links
-- Excessive mentions
+### auto-moderation
 
-**Escalation:**
+detects and acts on: profanity, spam, excessive caps, discord invite links, external links, and mass mentions.
+
+escalation per user:
 ```
-1st warn  → Warning
-2nd warn  → 5-minute timeout
-3rd warn  → 30-minute timeout + kick
-4th warn  → Permanent ban
+1st warn  →  dm warning
+2nd warn  →  5-minute timeout
+3rd warn  →  kick
+4th warn  →  permanent ban
 ```
 
-### Manual Commands
+moderators (manage messages permission) are exempt from all filters.
 
-| Command | Description |
-|---------|------------|
-| `!ping` | Check bot latency |
-| `!purge <amount>` | Delete messages |
-| `!purge @user <amount>` | Delete user's messages |
-| `!slowmode <seconds>` | Set channel slowmode |
-| `!lock` | Lock current channel |
-| `!unlock` | Unlock current channel |
-| `!warnings @user` | View user's warnings |
-| `!clear-warnings @user` | Clear user's warnings |
+### commands
 
-### Slash Commands
+| command | description |
+|---|---|
+| `!ping` | check latency |
+| `!reload` | reload all cogs (owner only) |
+| `!purge <amount> [@user]` | delete messages |
+| `!slowmode <seconds>` | set channel slowmode |
+| `!lock` | lock current channel |
+| `!unlock` | unlock current channel |
+| `!warnings [@user]` | view warnings |
+| `!clearwarnings @user` | clear all warnings |
 
-| Command | Description |
-|---------|------------|
-| `/config` | View server settings |
-| `/config auto-mod <on/off>` | Toggle auto-mod |
-| `/config max-warns <1-10>` | Set warns before action |
-| `/config filter <type> <on/off>` | Toggle specific filter |
-| `/config threshold <type> <value>` | Set filter threshold |
+### slash commands
 
-### Appeal System
+| command | description |
+|---|---|
+| `/config show` | view server settings |
+| `/config automod <on/off>` | toggle auto-mod |
+| `/config maxwarns <1-10>` | set warn limit |
+| `/config warnaction <action>` | set action at max warns |
+| `/config filter <type> <on/off>` | toggle a filter |
+| `/config threshold <type> <value>` | adjust filter sensitivity |
 
-When banned, users can DM the bot to appeal. Moderators use:
+all `/config` commands require **manage server** permission.
 
-| Command | Description |
-|---------|------------|
-| `!appeals` | List pending appeals |
-| `!appeal <id>` | View appeal details |
-| `!appeal <id> approve` | Approve appeal |
-| `!appeal <id> deny` | Deny appeal |
+### appeal system
 
-## Project Structure
+banned users can dm the bot to submit an appeal. moderators review with:
+
+| command | description |
+|---|---|
+| `!appeals` | list pending appeals |
+| `!appeal <id>` | view appeal details |
+| `!appeal <id> approve` | unban the user |
+| `!appeal <id> deny` | deny the appeal |
+
+---
+
+## project structure
 
 ```
 laciedc/
-├── bot.py              # Main entry point
-├── colors.py           # Color palette
-├── database.py        # PostgreSQL connection
+├── bot.py
+├── colors.py
+├── database.py
 ├── cogs/
-│   ├── config.py      # Slash command config
-│   ├── auto_mod.py   # Auto-moderation
-│   ├── mod_tools.py # Manual commands
-│   └── appeals.py   # Appeal system
+│   ├── auto_mod.py
+│   ├── appeals.py
+│   ├── config.py
+│   └── mod_tools.py
 └── utils/
-    └── embeds.py    # Embed builder
+    ├── embeds.py
+    └── watcher.py
 ```
 
-## Troubleshooting
+---
 
-### "Could not connect to the database"
+## troubleshooting
 
-- Ensure PostgreSQL is running
-- Check `.env` credentials
-- Verify database exists: `CREATE DATABASE laciedc;`
+**can't connect to database** — check postgresql is running and `.env` credentials are correct. verify the database exists: `CREATE DATABASE laciedc;`
 
-### "Missing Permissions"
+**missing permissions** — re-invite the bot with the correct permissions. the bot's role must be above all user roles it needs to moderate.
 
-- Re-invite bot with correct permissions
-- Bot role must be above all user roles
+---
 
-### "ClientException: Already has associated command tree"
+## license
 
-- Restart the bot (clear cached tree)
-
-## License
-
-GPL v3.0 - See LICENSE file for details.
+gpl v3.0 — see license file for details.

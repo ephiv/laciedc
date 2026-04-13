@@ -1,49 +1,50 @@
 import discord
 from discord.ext import commands
 from utils.embeds import EmbedBuilder
-from colors import Color as ColorPalette
 
 
 class ModTools(commands.Cog):
-    def __init__(self, bot):
+    """Manual moderation commands for channel and message management."""
+
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command(name="purge", description="Delete messages")
+    # ------------------------------------------------------------------ #
+    #  !purge                                                              #
+    # ------------------------------------------------------------------ #
+
+    @commands.command(name="purge", description="Bulk-delete messages in the current channel")
     @commands.has_permissions(manage_messages=True)
-    async def purge(self, ctx, amount: int, member: discord.Member = None):
-        if amount < 1 or amount > 1000:
-            embed = EmbedBuilder.error(
-                "Invalid Amount",
-                "Amount must be between 1 and 1000"
-            )
-            await ctx.send(embed=embed)
+    async def purge(self, ctx: commands.Context, amount: int, member: discord.Member = None):
+        if not 1 <= amount <= 1000:
+            await ctx.send(embed=EmbedBuilder.error(
+                "Invalid Amount", "Amount must be between **1** and **1000**."
+            ))
             return
 
+        await ctx.message.delete()
+
+        check   = (lambda m: m.author == member) if member else None
+        deleted = await ctx.channel.purge(limit=amount, check=check)
+
+        desc = f"Deleted **{len(deleted)}** message(s)"
         if member:
-            def check(m):
-                return m.author.id == member.id
+            desc += f" from {member.mention}"
+        desc += f" in {ctx.channel.mention}."
 
-            deleted = await ctx.channel.purge(limit=amount, check=check)
-            count = len(deleted)
-        else:
-            deleted = await ctx.channel.purge(limit=amount)
-            count = len(deleted)
+        await ctx.send(embed=EmbedBuilder.success("Purge Complete", desc), delete_after=5)
 
-        embed = EmbedBuilder.success(
-            "Messages Deleted",
-            f"Deleted **{count}** message(s)" + (f" from {member.mention}" if member else "")
-        )
-        await ctx.send(embed=embed, delete_after=5)
+    # ------------------------------------------------------------------ #
+    #  !slowmode                                                           #
+    # ------------------------------------------------------------------ #
 
-    @commands.command(name="slowmode", description="Set channel slowmode")
+    @commands.command(name="slowmode", description="Set or remove the slowmode delay for this channel")
     @commands.has_permissions(manage_channels=True)
-    async def slowmode(self, ctx, seconds: int):
-        if seconds < 0 or seconds > 21600:
-            embed = EmbedBuilder.error(
-                "Invalid Duration",
-                "Seconds must be between 0 and 21600 (6 hours)"
-            )
-            await ctx.send(embed=embed)
+    async def slowmode(self, ctx: commands.Context, seconds: int):
+        if not 0 <= seconds <= 21600:
+            await ctx.send(embed=EmbedBuilder.error(
+                "Invalid Duration", "Seconds must be between **0** (off) and **21600** (6 hours)."
+            ))
             return
 
         await ctx.channel.edit(slowmode_delay=seconds)
@@ -51,70 +52,79 @@ class ModTools(commands.Cog):
         if seconds == 0:
             embed = EmbedBuilder.success(
                 "Slowmode Disabled",
-                f"Slowmode has been disabled in {ctx.channel.mention}"
+                f"Slowmode has been removed from {ctx.channel.mention}.",
             )
         else:
             embed = EmbedBuilder.success(
                 "Slowmode Enabled",
-                f"Slowmode set to **{seconds}** seconds in {ctx.channel.mention}"
+                f"Members in {ctx.channel.mention} may send one message every **{seconds}s**.",
             )
         await ctx.send(embed=embed)
 
-    @commands.command(name="lock", description="Lock the current channel")
-    @commands.has_permissions(manage_channels=True)
-    async def lock(self, ctx):
-        channel = ctx.channel
+    # ------------------------------------------------------------------ #
+    #  !lock / !unlock                                                     #
+    # ------------------------------------------------------------------ #
 
-        overwrite = channel.overwrites_for(ctx.guild.default_role)
+    @commands.command(name="lock", description="Prevent @everyone from sending messages here")
+    @commands.has_permissions(manage_channels=True)
+    async def lock(self, ctx: commands.Context):
+        overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+        if overwrite.send_messages is False:
+            await ctx.send(embed=EmbedBuilder.warning(
+                "Already Locked", f"{ctx.channel.mention} is already locked."
+            ))
+            return
+
         overwrite.send_messages = False
-        await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-
-        embed = EmbedBuilder.warning(
+        await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+        await ctx.send(embed=EmbedBuilder.warning(
             "Channel Locked",
-            f"{channel.mention} has been locked. Only staff can send messages."
-        )
-        await ctx.send(embed=embed)
+            f"{ctx.channel.mention} has been locked. Only staff can send messages.",
+        ))
 
-    @commands.command(name="unlock", description="Unlock the current channel")
+    @commands.command(name="unlock", description="Restore @everyone's ability to send messages here")
     @commands.has_permissions(manage_channels=True)
-    async def unlock(self, ctx):
-        channel = ctx.channel
+    async def unlock(self, ctx: commands.Context):
+        overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+        if overwrite.send_messages is not False:
+            await ctx.send(embed=EmbedBuilder.info(
+                "Not Locked", f"{ctx.channel.mention} is not currently locked."
+            ))
+            return
 
-        overwrite = channel.overwrites_for(ctx.guild.default_role)
-        overwrite.send_messages = None
-        await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-
-        embed = EmbedBuilder.success(
+        overwrite.send_messages = None  # Revert to role/server default
+        await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+        await ctx.send(embed=EmbedBuilder.success(
             "Channel Unlocked",
-            f"{channel.mention} has been unlocked."
-        )
-        await ctx.send(embed=embed)
+            f"{ctx.channel.mention} is now open for everyone.",
+        ))
+
+    # ------------------------------------------------------------------ #
+    #  Error handler                                                       #
+    # ------------------------------------------------------------------ #
 
     @purge.error
     @slowmode.error
     @lock.error
     @unlock.error
-    async def error_handler(self, ctx, error):
+    async def _error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             perm = "Manage Messages" if ctx.command.name == "purge" else "Manage Channels"
-            embed = EmbedBuilder.error(
-                "Permission Denied",
-                f"You need **{perm}** permission to use this command."
-            )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=EmbedBuilder.error(
+                "Permission Denied", f"You need **{perm}** permission to do that."
+            ))
         elif isinstance(error, commands.MissingRequiredArgument):
-            embed = EmbedBuilder.error(
-                "Missing Argument",
-                f"Usage: `!{ctx.command.name} {ctx.command.usage}`"
-            )
-            await ctx.send(embed=embed)
+            usages = {
+                "purge":    "!purge <amount> [@member]",
+                "slowmode": "!slowmode <seconds>",
+            }
+            usage = usages.get(ctx.command.name, f"!{ctx.command.name}")
+            await ctx.send(embed=EmbedBuilder.error("Missing Argument", f"Usage: `{usage}`"))
         elif isinstance(error, commands.BadArgument):
-            embed = EmbedBuilder.error(
-                "Invalid Argument",
-                "The provided argument is invalid."
-            )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=EmbedBuilder.error(
+                "Invalid Argument", "Please check your input and try again."
+            ))
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(ModTools(bot))

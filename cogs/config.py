@@ -1,141 +1,169 @@
+import discord
 from discord import app_commands
 from discord.ext import commands
 from database import db
 from utils.embeds import EmbedBuilder
-from colors import Color as ColorPalette
+from colors import Color
 
 
 class Config(commands.Cog):
-    def __init__(self, bot):
+    """Slash-command interface for per-guild bot configuration."""
+
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    config_group = app_commands.Group(name="config", description="Server configuration")
+    config_group = app_commands.Group(
+        name="config",
+        description="Server configuration",
+        default_permissions=discord.Permissions(manage_guild=True),
+    )
 
-    @config_group.command(name="show", description="Show current server settings")
-    async def show_config(self, interaction):
-        await interaction.response.defer()
-        settings = await db.get_guild_settings(interaction.guild.id)
+    # ------------------------------------------------------------------ #
+    #  /config show                                                        #
+    # ------------------------------------------------------------------ #
+
+    @config_group.command(name="show", description="Display the current server configuration")
+    async def show(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        s = await db.get_guild_settings(interaction.guild.id)
+
+        def toggle(v: bool) -> str:
+            return "✅ On" if v else "❌ Off"
 
         fields = [
-            {"name": "Auto-Mod", "value": f"{'Enabled' if settings['auto_mod_enabled'] else 'Disabled'}", "inline": True},
-            {"name": "Max Warns", "value": str(settings['max_warns']), "inline": True},
-            {"name": "Warn Action", "value": settings['warn_action'].capitalize(), "inline": True},
-            {"name": "Profanity Filter", "value": str(settings['filter_profanity']), "inline": True},
-            {"name": "Spam Filter", "value": str(settings['filter_spam']), "inline": True},
-            {"name": "Invite Filter", "value": str(settings['filter_invites']), "inline": True},
-            {"name": "Link Filter", "value": str(settings['filter_links']), "inline": True},
-            {"name": "Caps Filter", "value": str(settings['filter_caps']), "inline": True},
-            {"name": "Mention Filter", "value": str(settings['filter_mentions']), "inline": True},
-            {"name": "Caps Threshold", "value": f"{settings['caps_threshold']}%", "inline": True},
-            {"name": "Mention Threshold", "value": str(settings['mention_threshold']), "inline": True},
-            {"name": "Spam Threshold", "value": str(settings['spam_threshold']), "inline": True},
+            {"name": "Auto-Mod",         "value": toggle(s["auto_mod_enabled"]),              "inline": True},
+            {"name": "Max Warnings",     "value": str(s["max_warns"]),                         "inline": True},
+            {"name": "Warn Action",      "value": s["warn_action"].capitalize(),               "inline": True},
+            {"name": "Profanity Filter", "value": toggle(s["filter_profanity"]),               "inline": True},
+            {"name": "Spam Filter",      "value": toggle(s["filter_spam"]),                    "inline": True},
+            {"name": "Invite Filter",    "value": toggle(s["filter_invites"]),                 "inline": True},
+            {"name": "Link Filter",      "value": toggle(s["filter_links"]),                   "inline": True},
+            {"name": "Caps Filter",      "value": toggle(s["filter_caps"]),                    "inline": True},
+            {"name": "Mention Filter",   "value": toggle(s["filter_mentions"]),                "inline": True},
+            {"name": "Caps Threshold",   "value": f"{s['caps_threshold']}% uppercase",        "inline": True},
+            {"name": "Mention Threshold","value": f"{s['mention_threshold']} mentions",       "inline": True},
+            {"name": "Spam Threshold",   "value": f"{s['spam_threshold']} identical messages","inline": True},
         ]
 
         embed = EmbedBuilder.create(
             title="⚙️ Server Configuration",
-            color=ColorPalette.NAVY,
+            color=Color.NAVY,
             fields=fields,
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @config_group.command(name="auto-mod", description="Toggle auto-mod on/off")
-    @app_commands.describe(state="Enable or disable auto-mod")
-    async def toggle_auto_mod(self, interaction, state: bool):
-        await db.update_guild_setting(interaction.guild.id, "auto_mod_enabled", state)
-        embed = EmbedBuilder.success(
-            "Auto-Mod Toggled",
-            f"Auto-mod is now **{'enabled' if state else 'disabled'}**"
-        )
+    # ------------------------------------------------------------------ #
+    #  /config automod                                                     #
+    # ------------------------------------------------------------------ #
+
+    @config_group.command(name="automod", description="Enable or disable auto-moderation")
+    @app_commands.describe(enabled="Turn auto-mod on or off")
+    async def automod(self, interaction: discord.Interaction, enabled: bool):
+        await db.update_guild_setting(interaction.guild.id, "auto_mod_enabled", enabled)
+        state = "enabled" if enabled else "disabled"
+        embed = EmbedBuilder.success("Auto-Mod Updated", f"Auto-moderation is now **{state}**.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @config_group.command(name="max-warns", description="Set max warnings before action")
-    @app_commands.describe(number="Number of warns (1-10)")
-    async def set_max_warns(self, interaction, number: int):
-        if not 1 <= number <= 10:
-            embed = EmbedBuilder.error("Invalid Value", "Number must be between 1 and 10")
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
+    # ------------------------------------------------------------------ #
+    #  /config maxwarns                                                    #
+    # ------------------------------------------------------------------ #
 
+    @config_group.command(name="maxwarns", description="Set how many warnings trigger an action")
+    @app_commands.describe(number="Number of warnings before action (1–10)")
+    async def maxwarns(
+        self,
+        interaction: discord.Interaction,
+        number: app_commands.Range[int, 1, 10],
+    ):
         await db.update_guild_setting(interaction.guild.id, "max_warns", number)
-        embed = EmbedBuilder.success(
-            "Max Warns Updated",
-            f"Max warns set to **{number}**"
-        )
+        embed = EmbedBuilder.success("Max Warnings Updated", f"Action will be taken after **{number}** warning(s).")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @config_group.command(name="warn-action", description="Set action on max warns")
-    @app_commands.describe(action="Action to take (timeout/kick/ban)")
-    async def set_warn_action(self, interaction, action: str):
-        if action not in ["timeout", "kick", "ban"]:
-            embed = EmbedBuilder.error("Invalid Action", "Action must be: timeout, kick, or ban")
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
+    # ------------------------------------------------------------------ #
+    #  /config warnaction                                                  #
+    # ------------------------------------------------------------------ #
 
-        await db.update_guild_setting(interaction.guild.id, "warn_action", action)
-        embed = EmbedBuilder.success(
-            "Warn Action Updated",
-            f"Action on max warns set to **{action}**"
-        )
+    @config_group.command(name="warnaction", description="Set the action taken when max warnings are reached")
+    @app_commands.describe(action="What to do when a user hits max warnings")
+    @app_commands.choices(action=[
+        app_commands.Choice(name="Timeout (30 min)", value="timeout"),
+        app_commands.Choice(name="Kick",              value="kick"),
+        app_commands.Choice(name="Ban",               value="ban"),
+    ])
+    async def warnaction(
+        self,
+        interaction: discord.Interaction,
+        action: app_commands.Choice[str],
+    ):
+        await db.update_guild_setting(interaction.guild.id, "warn_action", action.value)
+        embed = EmbedBuilder.success("Warn Action Updated", f"Users who reach max warnings will be **{action.name}**.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @config_group.command(name="filter", description="Toggle a specific filter")
-    @app_commands.describe(filter="Filter to toggle", state="Enable or disable")
-    async def toggle_filter(self, interaction, filter: str, state: bool):
-        valid_filters = [
-            "profanity", "spam", "invites", "links", "caps", "mentions"
-        ]
-        if filter not in valid_filters:
+    # ------------------------------------------------------------------ #
+    #  /config filter                                                      #
+    # ------------------------------------------------------------------ #
+
+    @config_group.command(name="filter", description="Enable or disable a specific content filter")
+    @app_commands.describe(name="Which filter to change", enabled="Turn the filter on or off")
+    @app_commands.choices(name=[
+        app_commands.Choice(name="Profanity", value="profanity"),
+        app_commands.Choice(name="Spam",      value="spam"),
+        app_commands.Choice(name="Invites",   value="invites"),
+        app_commands.Choice(name="Links",     value="links"),
+        app_commands.Choice(name="Caps",      value="caps"),
+        app_commands.Choice(name="Mentions",  value="mentions"),
+    ])
+    async def filter(
+        self,
+        interaction: discord.Interaction,
+        name: app_commands.Choice[str],
+        enabled: bool,
+    ):
+        await db.update_guild_setting(interaction.guild.id, f"filter_{name.value}", enabled)
+        state = "enabled" if enabled else "disabled"
+        embed = EmbedBuilder.success("Filter Updated", f"The **{name.name}** filter is now **{state}**.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ------------------------------------------------------------------ #
+    #  /config threshold                                                   #
+    # ------------------------------------------------------------------ #
+
+    THRESHOLD_BOUNDS: dict[str, tuple[int, int, str]] = {
+        "caps":    (10, 90, "caps_threshold",    "% uppercase letters to trigger"),
+        "mention": (2,  20, "mention_threshold", "mentions to trigger"),
+        "spam":    (2,  10, "spam_threshold",    "identical messages to trigger"),
+    }
+
+    @config_group.command(name="threshold", description="Adjust a filter's sensitivity threshold")
+    @app_commands.describe(filter="Which threshold to adjust", value="New threshold value")
+    @app_commands.choices(filter=[
+        app_commands.Choice(name="Caps (% uppercase)",          value="caps"),
+        app_commands.Choice(name="Mentions (count)",            value="mention"),
+        app_commands.Choice(name="Spam (identical messages)",   value="spam"),
+    ])
+    async def threshold(
+        self,
+        interaction: discord.Interaction,
+        filter: app_commands.Choice[str],
+        value: int,
+    ):
+        min_v, max_v, db_key, unit = self.THRESHOLD_BOUNDS[filter.value]
+
+        if not min_v <= value <= max_v:
             embed = EmbedBuilder.error(
-                "Invalid Filter",
-                f"Valid filters: {', '.join(valid_filters)}"
+                "Out of Range",
+                f"**{filter.name}** threshold must be between **{min_v}** and **{max_v}**.",
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        await db.update_guild_setting(
-            interaction.guild.id, f"filter_{filter}", state
-        )
-        embed = EmbedBuilder.success(
-            "Filter Updated",
-            f"**{filter.capitalize()}** filter is now **{'enabled' if state else 'disabled'}**"
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @config_group.command(name="threshold", description="Set filter threshold")
-    @app_commands.describe(type="Threshold type (caps/mention/spam)", value="Threshold value")
-    async def set_threshold(self, interaction, type: str, value: int):
-        valid_thresholds = {
-            "caps": (5, 50),
-            "mention": (2, 20),
-            "spam": (2, 10),
-        }
-
-        if type not in valid_thresholds:
-            embed = EmbedBuilder.error(
-                "Invalid Type",
-                f"Valid types: {', '.join(valid_thresholds.keys())}"
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-
-        min_val, max_val = valid_thresholds[type]
-        if not min_val <= value <= max_val:
-            embed = EmbedBuilder.error(
-                "Invalid Value",
-                f"Value must be between {min_val} and {max_val}"
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-
-        await db.update_guild_setting(
-            interaction.guild.id, f"{type}_threshold", value
-        )
+        await db.update_guild_setting(interaction.guild.id, db_key, value)
         embed = EmbedBuilder.success(
             "Threshold Updated",
-            f"**{type.capitalize()}** threshold set to **{value}**"
+            f"**{filter.name}** threshold set to **{value}** {unit}.",
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(Config(bot))
