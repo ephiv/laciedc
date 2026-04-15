@@ -6,54 +6,64 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 
-# Maps "auto_mod.py" → "cogs.auto_mod" etc.
-def _build_cog_map(cogs: list[str]) -> dict[str, str]:
-    return {cog.split(".")[-1] + ".py": cog for cog in cogs}
-
-
 class _CogFileHandler(FileSystemEventHandler):
-    def __init__(self, bot, loop: asyncio.AbstractEventLoop, cog_map: dict[str, str]):
-        self._bot     = bot
-        self._loop    = loop
-        self._cog_map = cog_map
-        self._last_reload: dict[str, float] = {}
-        self._debounce = 1.5  # seconds — editors often emit 2+ events per save
+    def __init__(self, bot, loop: asyncio.AbstractEventLoop):
+        self._bot      = bot
+        self._loop     = loop
+        self._debounce = 1.5  # editors often emit 2+ events per save
+        self._last: dict[str, float] = {}
+
+    def _to_cog_name(self, path: str) -> str | None:
+        p = Path(path)
+        if p.suffix != ".py" or p.stem == "__init__":
+            return None
+        return f"cogs.{p.stem}"
 
     def on_modified(self, event):
         if event.is_directory:
             return
-
-        filename = Path(event.src_path).name
-        cog_name = self._cog_map.get(filename)
-        if not cog_name:
+        cog = self._to_cog_name(event.src_path)
+        if not cog:
             return
+        self._dispatch(cog, Path(event.src_path).name)
 
-        # Debounce
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        cog = self._to_cog_name(event.src_path)
+        if not cog:
+            return
+        self._dispatch(cog, Path(event.src_path).name)
+
+    def _dispatch(self, cog: str, filename: str):
         now = time.monotonic()
-        if now - self._last_reload.get(filename, 0) < self._debounce:
+        if now - self._last.get(filename, 0) < self._debounce:
             return
-        self._last_reload[filename] = now
+        self._last[filename] = now
+        asyncio.run_coroutine_threadsafe(
+            self._reload(cog, filename), self._loop
+        )
 
-        asyncio.run_coroutine_threadsafe(self._reload(cog_name, filename), self._loop)
-
-    async def _reload(self, cog_name: str, filename: str):
+    async def _reload(self, cog: str, filename: str):
         try:
-            await self._bot.reload_extension(cog_name)
-            print(f"[watcher] ✓ {filename}")
+            if cog in self._bot.extensions:
+                await self._bot.reload_extension(cog)
+                print(f"[watcher] ✓ reloaded {filename}")
+            else:
+                await self._bot.load_extension(cog)
+                print(f"[watcher] ✓ loaded   {filename}")
         except Exception as exc:
             print(f"[watcher] ✗ {filename}: {exc}")
 
 
-def start_watcher(bot, loop: asyncio.AbstractEventLoop, cogs: list[str]) -> Observer:
+def start_watcher(bot, loop: asyncio.AbstractEventLoop) -> Observer:
     """
-    Start a background file-system observer that reloads a cog whenever
-    its source file is modified.  Returns the Observer so the caller can
-    stop it on shutdown.
+    Start a background observer that reloads or loads any cog whose
+    source file is saved.  No static list needed — all .py files in
+    cogs/ are watched automatically.
     """
-    cog_map  = _build_cog_map(cogs)
-    handler  = _CogFileHandler(bot, loop, cog_map)
     observer = Observer()
-    observer.schedule(handler, path="cogs", recursive=False)
+    observer.schedule(_CogFileHandler(bot, loop), path="cogs", recursive=False)
     observer.start()
-    print(f"[watcher] Watching cogs/ — {len(cog_map)} cog(s) tracked")
+    print("[watcher] watching cogs/")
     return observer

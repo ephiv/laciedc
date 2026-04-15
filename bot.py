@@ -1,6 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 from discord import Embed, Intents
 from discord.ext import commands
@@ -18,23 +19,30 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-COGS = ["cogs.config", "cogs.auto_mod", "cogs.mod_tools", "cogs.appeals", "cogs.help"]
-
 _observer = None  # file-watcher handle, stopped on shutdown
 
 
-# ------------------------------------------------------------------ #
-#  Startup                                                             #
-# ------------------------------------------------------------------ #
+def _discover_cogs() -> list[str]:
+    """Return cog extension names for every .py file in cogs/."""
+    return sorted(
+        f"cogs.{p.stem}"
+        for p in Path("cogs").glob("*.py")
+        if p.stem != "__init__"
+    )
+
 
 async def _load_cogs():
-    for cog in COGS:
+    for cog in _discover_cogs():
         try:
             await bot.load_extension(cog)
             print(f"  ✓ {cog}")
         except Exception as exc:
             print(f"  ✗ {cog}: {exc}")
 
+
+# ------------------------------------------------------------------ #
+#  Startup                                                             #
+# ------------------------------------------------------------------ #
 
 @bot.event
 async def on_ready():
@@ -52,11 +60,8 @@ async def on_ready():
     await bot.tree.sync()
     print("\nSlash commands synced\n")
 
-    # Start the file watcher after cogs are loaded so the first reload
-    # never races against the initial load.
-    _observer = start_watcher(bot, asyncio.get_event_loop(), COGS)
-
-    print("Bot is ready.")
+    _observer = start_watcher(bot, asyncio.get_event_loop())
+    print("\nBot is ready.")
 
 
 @bot.event
@@ -87,11 +92,12 @@ async def ping(ctx):
     await msg.edit(content=None, embed=embed)
 
 
-@bot.command(name="reload", description="Reload all cogs")
+@bot.command(name="reload", description="Reload all currently loaded cogs")
 @commands.is_owner()
 async def reload_cogs(ctx):
-    lines = []
-    for cog in COGS:
+    loaded = [ext for ext in bot.extensions if ext.startswith("cogs.")]
+    lines  = []
+    for cog in sorted(loaded):
         try:
             await bot.reload_extension(cog)
             lines.append(f"✅ `{cog}`")
@@ -100,7 +106,7 @@ async def reload_cogs(ctx):
 
     embed = Embed(
         title="🔄 Reloaded",
-        description="\n".join(lines),
+        description="\n".join(lines) or "no cogs loaded",
         color=Color.GRAY,
     )
     await ctx.send(embed=embed)
@@ -109,7 +115,7 @@ async def reload_cogs(ctx):
 @reload_cogs.error
 async def reload_error(ctx, error):
     if isinstance(error, commands.NotOwner):
-        await ctx.send("Only the bot owner can use this command.", delete_after=5)
+        await ctx.send("only the bot owner can use this command.", delete_after=5)
 
 
 # ------------------------------------------------------------------ #

@@ -1,3 +1,4 @@
+import json
 import os
 import asyncpg
 from dotenv import load_dotenv
@@ -23,80 +24,99 @@ class Database:
 
     async def init_schema(self):
         async with self.pool.acquire() as conn:
+            # ── Core tables ────────────────────────────────────────────── #
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS guilds (
-                    guild_id BIGINT PRIMARY KEY,
-                    prefix TEXT DEFAULT '!',
-                    log_channel_id BIGINT,
-                    auto_mod_enabled BOOLEAN DEFAULT true,
-                    max_warns INT DEFAULT 3,
-                    warn_action VARCHAR(20) DEFAULT 'timeout',
-                    filter_profanity BOOLEAN DEFAULT true,
-                    filter_spam BOOLEAN DEFAULT true,
-                    filter_invites BOOLEAN DEFAULT true,
-                    filter_links BOOLEAN DEFAULT false,
-                    filter_caps BOOLEAN DEFAULT false,
-                    filter_mentions BOOLEAN DEFAULT true,
-                    caps_threshold INT DEFAULT 15,
-                    mention_threshold INT DEFAULT 5,
-                    spam_threshold INT DEFAULT 3,
-                    starboard_channel_id BIGINT,
-                    starboard_threshold INT DEFAULT 5,
-                    emoji_weights JSONB DEFAULT '{"⭐": 1, "✨": 2}',
-                    created_at TIMESTAMP DEFAULT NOW()
+                    guild_id             BIGINT PRIMARY KEY,
+                    prefix               TEXT DEFAULT '!',
+                    log_channel_id       BIGINT,
+                    auto_mod_enabled     BOOLEAN DEFAULT true,
+                    max_warns            INT DEFAULT 3,
+                    warn_action          VARCHAR(20) DEFAULT 'timeout',
+                    filter_profanity     BOOLEAN DEFAULT true,
+                    filter_spam          BOOLEAN DEFAULT true,
+                    filter_invites       BOOLEAN DEFAULT true,
+                    filter_links         BOOLEAN DEFAULT false,
+                    filter_caps          BOOLEAN DEFAULT false,
+                    filter_mentions      BOOLEAN DEFAULT true,
+                    caps_threshold       INT DEFAULT 15,
+                    mention_threshold    INT DEFAULT 5,
+                    spam_threshold       INT DEFAULT 3,
+                    created_at           TIMESTAMP DEFAULT NOW()
                 )
+            """)
+
+            # Starboard columns (safe to run on existing tables)
+            await conn.execute("""
+                ALTER TABLE guilds
+                    ADD COLUMN IF NOT EXISTS starboard_channel_id BIGINT,
+                    ADD COLUMN IF NOT EXISTS starboard_threshold   INT  DEFAULT 5,
+                    ADD COLUMN IF NOT EXISTS emoji_weights         TEXT DEFAULT '{"⭐": 1}'
             """)
 
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS warns (
-                    id SERIAL PRIMARY KEY,
-                    guild_id BIGINT REFERENCES guilds(guild_id),
-                    user_id BIGINT,
-                    reason TEXT,
-                    severity VARCHAR(20) DEFAULT 'medium',
+                    id         SERIAL PRIMARY KEY,
+                    guild_id   BIGINT REFERENCES guilds(guild_id),
+                    user_id    BIGINT,
+                    reason     TEXT,
+                    severity   VARCHAR(20) DEFAULT 'medium',
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
 
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS bans (
-                    id SERIAL PRIMARY KEY,
-                    guild_id BIGINT REFERENCES guilds(guild_id),
-                    user_id BIGINT,
-                    reason TEXT,
-                    banned_by BIGINT,
-                    is_active BOOLEAN DEFAULT true,
+                    id         SERIAL PRIMARY KEY,
+                    guild_id   BIGINT REFERENCES guilds(guild_id),
+                    user_id    BIGINT,
+                    reason     TEXT,
+                    banned_by  BIGINT,
+                    is_active  BOOLEAN DEFAULT true,
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
 
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS appeals (
-                    id SERIAL PRIMARY KEY,
-                    guild_id BIGINT REFERENCES guilds(guild_id),
-                    user_id BIGINT,
-                    ban_id INTEGER REFERENCES bans(id),
-                    message TEXT,
-                    status VARCHAR(20) DEFAULT 'pending',
+                    id          SERIAL PRIMARY KEY,
+                    guild_id    BIGINT REFERENCES guilds(guild_id),
+                    user_id     BIGINT,
+                    ban_id      INTEGER REFERENCES bans(id),
+                    message     TEXT,
+                    status      VARCHAR(20) DEFAULT 'pending',
                     reviewed_by BIGINT,
                     reviewed_at TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at  TIMESTAMP DEFAULT NOW()
                 )
             """)
 
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS spam_cache (
-                    user_id BIGINT,
-                    guild_id BIGINT,
+                    user_id      BIGINT,
+                    guild_id     BIGINT,
                     message_hash TEXT,
-                    created_at TIMESTAMP DEFAULT NOW(),
+                    created_at   TIMESTAMP DEFAULT NOW(),
                     PRIMARY KEY (user_id, guild_id, message_hash)
+                )
+            """)
+
+            # ── Starboard ──────────────────────────────────────────────── #
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS starboard_posts (
+                    message_id           BIGINT NOT NULL,
+                    guild_id             BIGINT NOT NULL,
+                    channel_id           BIGINT NOT NULL,
+                    starboard_message_id BIGINT NOT NULL,
+                    PRIMARY KEY (message_id, guild_id)
                 )
             """)
 
     async def close(self):
         if self.pool:
             await self.pool.close()
+
+    # ── Guild settings ─────────────────────────────────────────────────── #
 
     async def get_guild_settings(self, guild_id: int) -> dict:
         async with self.pool.acquire() as conn:
@@ -116,8 +136,10 @@ class Database:
         async with self.pool.acquire() as conn:
             await conn.execute(
                 f"UPDATE guilds SET {key} = $1 WHERE guild_id = $2",
-                value, guild_id
+                value, guild_id,
             )
+
+    # ── Warnings ───────────────────────────────────────────────────────── #
 
     async def add_warn(
         self, guild_id: int, user_id: int, reason: str, severity: str = "medium"
@@ -126,14 +148,14 @@ class Database:
             return await conn.fetchval(
                 """INSERT INTO warns (guild_id, user_id, reason, severity)
                    VALUES ($1, $2, $3, $4) RETURNING id""",
-                guild_id, user_id, reason, severity
+                guild_id, user_id, reason, severity,
             )
 
     async def get_warn_count(self, guild_id: int, user_id: int) -> int:
         async with self.pool.acquire() as conn:
             return await conn.fetchval(
                 "SELECT COUNT(*) FROM warns WHERE guild_id = $1 AND user_id = $2",
-                guild_id, user_id
+                guild_id, user_id,
             )
 
     async def get_warns(self, guild_id: int, user_id: int) -> list:
@@ -141,7 +163,7 @@ class Database:
             rows = await conn.fetch(
                 """SELECT * FROM warns WHERE guild_id = $1 AND user_id = $2
                    ORDER BY created_at DESC""",
-                guild_id, user_id
+                guild_id, user_id,
             )
             return [dict(r) for r in rows]
 
@@ -149,8 +171,10 @@ class Database:
         async with self.pool.acquire() as conn:
             return await conn.execute(
                 "DELETE FROM warns WHERE guild_id = $1 AND user_id = $2",
-                guild_id, user_id
+                guild_id, user_id,
             )
+
+    # ── Bans ───────────────────────────────────────────────────────────── #
 
     async def add_ban(
         self, guild_id: int, user_id: int, reason: str, banned_by: int
@@ -159,17 +183,15 @@ class Database:
             return await conn.fetchval(
                 """INSERT INTO bans (guild_id, user_id, reason, banned_by)
                    VALUES ($1, $2, $3, $4) RETURNING id""",
-                guild_id, user_id, reason, banned_by
+                guild_id, user_id, reason, banned_by,
             )
 
-    async def get_active_ban(
-        self, guild_id: int, user_id: int
-    ) -> dict | None:
+    async def get_active_ban(self, guild_id: int, user_id: int) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT * FROM bans WHERE guild_id = $1 AND user_id = $2
                    AND is_active = true""",
-                guild_id, user_id
+                guild_id, user_id,
             )
             return dict(row) if row else None
 
@@ -179,6 +201,8 @@ class Database:
                 "UPDATE bans SET is_active = false WHERE id = $1", ban_id
             )
 
+    # ── Appeals ────────────────────────────────────────────────────────── #
+
     async def add_appeal(
         self, guild_id: int, user_id: int, ban_id: int, message: str
     ) -> int:
@@ -186,7 +210,7 @@ class Database:
             return await conn.fetchval(
                 """INSERT INTO appeals (guild_id, user_id, ban_id, message)
                    VALUES ($1, $2, $3, $4) RETURNING id""",
-                guild_id, user_id, ban_id, message
+                guild_id, user_id, ban_id, message,
             )
 
     async def get_pending_appeals(self, guild_id: int) -> list:
@@ -197,7 +221,7 @@ class Database:
                    JOIN bans b ON a.ban_id = b.id
                    WHERE a.guild_id = $1 AND a.status = 'pending'
                    ORDER BY a.created_at DESC""",
-                guild_id
+                guild_id,
             )
             return [dict(r) for r in rows]
 
@@ -208,45 +232,53 @@ class Database:
                    FROM appeals a
                    JOIN bans b ON a.ban_id = b.id
                    WHERE a.id = $1""",
-                appeal_id
+                appeal_id,
             )
             return dict(row) if row else None
 
-    async def update_appeal(
-        self, appeal_id: int, status: str, reviewed_by: int
-    ):
+    async def update_appeal(self, appeal_id: int, status: str, reviewed_by: int):
         async with self.pool.acquire() as conn:
             await conn.execute(
                 """UPDATE appeals SET status = $1, reviewed_by = $2,
                    reviewed_at = NOW() WHERE id = $3""",
-                status, reviewed_by, appeal_id
+                status, reviewed_by, appeal_id,
             )
 
-    async def add_spam_cache(
-        self, guild_id: int, user_id: int, message_hash: str
+    # ── Starboard ──────────────────────────────────────────────────────── #
+
+    async def get_starboard_post(
+        self, guild_id: int, message_id: int
+    ) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT * FROM starboard_posts
+                   WHERE guild_id = $1 AND message_id = $2""",
+                guild_id, message_id,
+            )
+            return dict(row) if row else None
+
+    async def add_starboard_post(
+        self,
+        guild_id: int,
+        message_id: int,
+        channel_id: int,
+        starboard_message_id: int,
     ):
         async with self.pool.acquire() as conn:
             await conn.execute(
-                """INSERT INTO spam_cache (guild_id, user_id, message_hash)
-                   VALUES ($1, $2, $3)
-                   ON CONFLICT (user_id, guild_id, message_hash) DO NOTHING""",
-                guild_id, user_id, message_hash
-            )
-            await conn.execute(
-                """DELETE FROM spam_cache
-                   WHERE created_at < NOW() - INTERVAL '5 seconds'"""
+                """INSERT INTO starboard_posts
+                       (message_id, guild_id, channel_id, starboard_message_id)
+                   VALUES ($1, $2, $3, $4)
+                   ON CONFLICT DO NOTHING""",
+                message_id, guild_id, channel_id, starboard_message_id,
             )
 
-    async def check_spam_cache(
-        self, guild_id: int, user_id: int, message_hash: str
-    ) -> bool:
+    async def delete_starboard_post(self, guild_id: int, message_id: int):
         async with self.pool.acquire() as conn:
-            exists = await conn.fetchval(
-                """SELECT 1 FROM spam_cache
-                   WHERE guild_id = $1 AND user_id = $2 AND message_hash = $3""",
-                guild_id, user_id, message_hash
+            await conn.execute(
+                "DELETE FROM starboard_posts WHERE guild_id = $1 AND message_id = $2",
+                guild_id, message_id,
             )
-            return bool(exists)
 
 
 db = Database()
