@@ -1,6 +1,6 @@
 # laciedc
 
-a discord bot with auto-moderation, a ban appeal system, and manual moderation tools.
+a discord bot with auto-moderation, image tools, a starboard, and a ban appeal system.
 
 ## prerequisites
 
@@ -78,17 +78,17 @@ tables are created automatically on first run. the bot also watches `cogs/` for 
 
 ### auto-moderation
 
-detects and acts on: profanity, spam, excessive caps, discord invite links, external links, and mass mentions.
+detects and acts on: profanity (including leet-speak variants), spam, excessive caps, discord invite links, external links, and mass mentions.
+
+moderators (manage messages) are exempt from all filters.
 
 escalation per user:
 ```
-1st warn  →  dm warning
-2nd warn  →  5-minute timeout
-3rd warn  →  kick
-4th warn  →  permanent ban
+1st warn   →  dm warning only
+2nd warn   →  5-minute timeout
+3rd warn   →  kick (only if max_warns > 3)
+max warns  →  action set by !config warnaction (timeout / kick / ban)
 ```
-
-moderators (manage messages permission) are exempt from all filters.
 
 ### commands
 
@@ -102,19 +102,36 @@ moderators (manage messages permission) are exempt from all filters.
 | `!unlock` | unlock current channel |
 | `!warnings [@user]` | view warnings |
 | `!clearwarnings @user` | clear all warnings |
+| `!filter <filter> [@user]` | apply image filter |
+| `!ascii [width] [@user]` | convert image to ascii art |
+| `!colors [num] [@user]` | extract dominant colors |
+| `!quote` | generate a quote card (reply to a message) |
+| `!avatar [@user]` | show full-size avatar |
 
-### slash commands
+### config commands
+
+all require **manage server** permission.
 
 | command | description |
 |---|---|
-| `/config show` | view server settings |
-| `/config automod <on/off>` | toggle auto-mod |
-| `/config maxwarns <1-10>` | set warn limit |
-| `/config warnaction <action>` | set action at max warns |
-| `/config filter <type> <on/off>` | toggle a filter |
-| `/config threshold <type> <value>` | adjust filter sensitivity |
+| `!config` | view server settings |
+| `!config automod <on/off>` | toggle auto-mod |
+| `!config maxwarns <1-10>` | set warn limit |
+| `!config warnaction <timeout/kick/ban>` | set action at max warns |
+| `!config filter <type> <on/off>` | toggle a filter |
+| `!config threshold <type> <value>` | adjust filter sensitivity |
+| `!config logchannel [#channel]` | set mod-action log channel |
 
-all `/config` commands require **manage server** permission.
+### starboard
+
+requires **manage channels** to configure.
+
+| command | description |
+|---|---|
+| `!starboard` | view settings |
+| `!starboard channel #channel` | set the starboard channel |
+| `!starboard threshold <n>` | set star count required |
+| `!starboard emojis {"⭐": 1}` | set emoji weights as json |
 
 ### appeal system
 
@@ -136,13 +153,18 @@ laciedc/
 ├── bot.py
 ├── colors.py
 ├── database.py
+├── requirements.txt
 ├── cogs/
-│   ├── auto_mod.py
 │   ├── appeals.py
+│   ├── auto_mod.py
 │   ├── config.py
-│   └── mod_tools.py
+│   ├── help.py
+│   ├── images.py
+│   ├── mod_tools.py
+│   └── starboard.py
 └── utils/
     ├── embeds.py
+    ├── logger.py
     └── watcher.py
 ```
 
@@ -153,6 +175,8 @@ laciedc/
 **can't connect to database** — check postgresql is running and `.env` credentials are correct. verify the database exists: `CREATE DATABASE laciedc;`
 
 **missing permissions** — re-invite the bot with the correct permissions. the bot's role must be above all user roles it needs to moderate.
+
+**image commands fail** — ensure `pillow` is installed (`pip install pillow`) and that dejavu fonts are present on your system (`apt install fonts-dejavu` on linux).
 
 ---
 

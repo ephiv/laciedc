@@ -215,7 +215,7 @@ class Images(commands.Cog):
                 return
 
             async with ctx.typing():
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 fn   = (lambda i: _deep_fry(i)) if filter_name == "deepfry" \
                        else FILTERS[filter_name]
                 result = await loop.run_in_executor(None, fn, image.convert("RGB"))
@@ -248,7 +248,7 @@ class Images(commands.Cog):
             return
 
         async with ctx.typing():
-            result = await asyncio.get_event_loop().run_in_executor(
+            result = await asyncio.get_running_loop().run_in_executor(
                 None, _ascii_art, image, width
             )
 
@@ -280,7 +280,7 @@ class Images(commands.Cog):
             return
 
         async with ctx.typing():
-            colors = await asyncio.get_event_loop().run_in_executor(
+            colors = await asyncio.get_running_loop().run_in_executor(
                 None, _extract_colors, image, num
             )
 
@@ -327,7 +327,7 @@ class Images(commands.Cog):
         author_str = f"{source.author.display_name} • #{source.channel.name}"
 
         async with ctx.typing():
-            buf = await asyncio.get_event_loop().run_in_executor(
+            buf = await asyncio.get_running_loop().run_in_executor(
                 None, _make_quote_card, text, author_str
             )
 

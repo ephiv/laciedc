@@ -5,6 +5,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Fix 1 — allowlist prevents SQL injection via f-string column interpolation.
+# asyncpg cannot parameterise column names, so the f-string stays, but only
+# known schema-valid keys can ever reach it.
+_ALLOWED_SETTING_KEYS: frozenset[str] = frozenset({
+    "prefix", "log_channel_id",
+    "auto_mod_enabled", "max_warns", "warn_action",
+    "filter_profanity", "filter_spam", "filter_invites",
+    "filter_links", "filter_caps", "filter_mentions",
+    "caps_threshold", "mention_threshold", "spam_threshold",
+    "starboard_channel_id", "starboard_threshold", "emoji_weights",
+})
+
 
 class Database:
     def __init__(self):
@@ -24,7 +36,6 @@ class Database:
 
     async def init_schema(self):
         async with self.pool.acquire() as conn:
-            # ── Core tables ────────────────────────────────────────────── #
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS guilds (
                     guild_id             BIGINT PRIMARY KEY,
@@ -46,7 +57,6 @@ class Database:
                 )
             """)
 
-            # Starboard columns (safe to run on existing tables)
             await conn.execute("""
                 ALTER TABLE guilds
                     ADD COLUMN IF NOT EXISTS starboard_channel_id BIGINT,
@@ -101,7 +111,6 @@ class Database:
                 )
             """)
 
-            # ── Starboard ──────────────────────────────────────────────── #
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS starboard_posts (
                     message_id           BIGINT NOT NULL,
@@ -133,6 +142,9 @@ class Database:
             return dict(row)
 
     async def update_guild_setting(self, guild_id: int, key: str, value):
+        # Fix 1 — reject unknown keys before they touch the query
+        if key not in _ALLOWED_SETTING_KEYS:
+            raise ValueError(f"unknown setting key: {key!r}")
         async with self.pool.acquire() as conn:
             await conn.execute(
                 f"UPDATE guilds SET {key} = $1 WHERE guild_id = $2",
@@ -246,9 +258,7 @@ class Database:
 
     # ── Starboard ──────────────────────────────────────────────────────── #
 
-    async def get_starboard_post(
-        self, guild_id: int, message_id: int
-    ) -> dict | None:
+    async def get_starboard_post(self, guild_id: int, message_id: int) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT * FROM starboard_posts
@@ -258,11 +268,7 @@ class Database:
             return dict(row) if row else None
 
     async def add_starboard_post(
-        self,
-        guild_id: int,
-        message_id: int,
-        channel_id: int,
-        starboard_message_id: int,
+        self, guild_id: int, message_id: int, channel_id: int, starboard_message_id: int,
     ):
         async with self.pool.acquire() as conn:
             await conn.execute(

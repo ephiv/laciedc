@@ -33,12 +33,13 @@ CATEGORIES = [
         "color":       Color.BLUE_GRAY,
         "description": "per-server configuration.\nrequires **manage server**.",
         "commands": [
-            ("!config",                              "show current server settings"),
-            ("!config automod <on/off>",             "toggle auto-moderation"),
-            ("!config maxwarns <1–10>",              "set warning count before action"),
-            ("!config warnaction <timeout/kick/ban>","set action at max warnings"),
-            ("!config filter <type> <on/off>",       "toggle a content filter"),
-            ("!config threshold <type> <value>",     "adjust a filter's sensitivity"),
+            ("!config",                               "show current server settings"),
+            ("!config automod <on/off>",              "toggle auto-moderation"),
+            ("!config maxwarns <1–10>",               "set warning count before action"),
+            ("!config warnaction <timeout/kick/ban>", "set action at max warnings"),
+            ("!config filter <type> <on/off>",        "toggle a content filter"),
+            ("!config threshold <type> <value>",      "adjust a filter's sensitivity"),
+            ("!config logchannel [#channel]",         "set (or clear) the mod-action log channel"),
         ],
     },
     {
@@ -47,11 +48,11 @@ CATEGORIES = [
         "color":       Color.GRAY,
         "description": "image filters, generation, and utilities.\navailable to all members.",
         "commands": [
-            ("!filter <filter> [@user]",   "apply a filter to an image or avatar"),
-            ("!ascii [width] [@user]",     "convert an image to ascii art"),
-            ("!colors [num] [@user]",      "extract dominant colors from an image"),
-            ("!quote",                     "generate a quote card — reply to a message"),
-            ("!avatar [@user]",            "show a user's full-size avatar"),
+            ("!filter <filter> [@user]", "apply a filter to an image or avatar"),
+            ("!ascii [width] [@user]",   "convert an image to ascii art"),
+            ("!colors [num] [@user]",    "extract dominant colors from an image"),
+            ("!quote",                   "generate a quote card — reply to a message"),
+            ("!avatar [@user]",          "show a user's full-size avatar"),
         ],
     },
     {
@@ -80,7 +81,7 @@ CATEGORIES = [
     },
     {
         "label":       "General",
-        "emoji":       "🤖",
+        "emoji":       "✨",
         "color":       Color.GRAY,
         "description": "core bot commands.",
         "commands": [
@@ -140,19 +141,17 @@ class HelpView(discord.ui.View):
         self.author_id = author_id
         self.message: discord.Message | None = None
 
-        self._prev = discord.ui.Button(emoji="◀", style=discord.ButtonStyle.secondary, row=0, disabled=True)
+        self._prev          = discord.ui.Button(emoji="◀", style=discord.ButtonStyle.secondary, row=0, disabled=True)
         self._prev.callback = self._on_prev
         self.add_item(self._prev)
 
-        self._next = discord.ui.Button(emoji="▶", style=discord.ButtonStyle.secondary, row=0)
+        self._next          = discord.ui.Button(emoji="▶", style=discord.ButtonStyle.secondary, row=0)
         self._next.callback = self._on_next
         self.add_item(self._next)
 
         options = [discord.SelectOption(label="overview", value="0", emoji="🏠", default=True)]
         for i, cat in enumerate(CATEGORIES, start=1):
-            options.append(discord.SelectOption(
-                label=cat["label"].lower(), value=str(i), emoji=cat["emoji"]
-            ))
+            options.append(discord.SelectOption(label=cat["label"].lower(), value=str(i), emoji=cat["emoji"]))
         self._select          = discord.ui.Select(placeholder="jump to a category…", options=options, row=1)
         self._select.callback = self._on_select
         self.add_item(self._select)
@@ -204,7 +203,7 @@ class Help(commands.Cog):
             self._cache = _build_embeds(self.bot)
         return self._cache
 
-    @commands.command(name="help", description="Show the help menu")
+    @commands.command(name="help")
     async def help(self, ctx: commands.Context):
         embeds       = self._get_embeds()
         view         = HelpView(embeds, ctx.author.id)

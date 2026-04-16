@@ -1,32 +1,17 @@
 import json
+import asyncpg
 import discord
 from discord.ext import commands
 from database import db
 from utils.embeds import EmbedBuilder
 from colors import Color
 
-
-# Star yellow — distinct from the bot's color palette
 _STAR_COLOR = 0xFFAC33
 
 
 class Starboard(commands.Cog):
-    """
-    Reposts highly-starred messages to a dedicated starboard channel.
-
-    - The score for a message is: sum(emoji_weight × reaction_count)
-      for every tracked emoji.
-    - A message is posted exactly once when its score first hits the
-      threshold.  Further reactions update the star count in the footer
-      of the already-posted starboard entry.
-    - Removing stars edits the footer count downward (but never deletes
-      the post — once a message makes the board it stays).
-    """
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
-    # ── Settings helpers ──────────────────────────────────────────────── #
 
     async def _settings(self, guild_id: int) -> dict:
         s = await db.get_guild_settings(guild_id)
@@ -42,14 +27,11 @@ class Starboard(commands.Cog):
         }
 
     def _score(self, message: discord.Message, weights: dict) -> int:
-        total = 0
-        for reaction in message.reactions:
-            w = weights.get(str(reaction.emoji), 0)
-            if w:
-                total += reaction.count * w
-        return total
-
-    # ── Embed builder ─────────────────────────────────────────────────── #
+        return sum(
+            reaction.count * weights.get(str(reaction.emoji), 0)
+            for reaction in message.reactions
+            if weights.get(str(reaction.emoji), 0)
+        )
 
     def _build_embed(self, message: discord.Message, score: int) -> discord.Embed:
         embed = discord.Embed(
@@ -57,192 +39,137 @@ class Starboard(commands.Cog):
             color=_STAR_COLOR,
             timestamp=message.created_at,
         )
-        embed.set_author(
-            name=message.author.display_name,
-            icon_url=message.author.display_avatar.url,
-        )
+        embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
         embed.add_field(
             name="source",
             value=f"[jump to message]({message.jump_url}) in {message.channel.mention}",
             inline=False,
         )
-
-        # Attach the first image if present
         for att in message.attachments:
             if att.content_type and att.content_type.startswith("image/"):
                 embed.set_image(url=att.url)
                 break
-
         embed.set_footer(text=f"⭐ {score} · #{message.channel.name}")
         return embed
 
-    # ── Starboard post lifecycle ──────────────────────────────────────── #
-
-    async def _post(
-        self,
-        sb_channel: discord.TextChannel,
-        message: discord.Message,
-        score: int,
-        guild_id: int,
-    ):
-        """Post a message to the starboard for the first time."""
+    async def _post(self, sb_channel, message, score, guild_id):
         embed  = self._build_embed(message, score)
         sb_msg = await sb_channel.send(embed=embed)
         await db.add_starboard_post(guild_id, message.id, message.channel.id, sb_msg.id)
 
-    async def _update(
-        self,
-        sb_channel: discord.TextChannel,
-        sb_msg_id: int,
-        message: discord.Message,
-        score: int,
-    ):
-        """Edit an existing starboard post to reflect the current score."""
+    async def _update(self, sb_channel, sb_msg_id, message, score):
         try:
             sb_msg = await sb_channel.fetch_message(sb_msg_id)
+            await sb_msg.edit(embed=self._build_embed(message, score))
         except discord.NotFound:
-            return
-
-        embed = self._build_embed(message, score)
-        await sb_msg.edit(embed=embed)
-
-    # ── Reaction listeners ───────────────────────────────────────────── #
+            pass
 
     async def _handle_reaction(self, reaction: discord.Reaction, user: discord.User):
         if user.bot or not reaction.message.guild:
             return
-
-        message  = reaction.message
-        guild_id = message.guild.id
-        settings = await self._settings(guild_id)
-
-        if not settings["channel_id"]:
-            return
-        if str(reaction.emoji) not in settings["weights"]:
-            return
-
-        # Fetch fresh message so reaction counts are accurate
         try:
-            message = await message.channel.fetch_message(message.id)
-        except discord.HTTPException:
-            return
+            message  = reaction.message
+            guild_id = message.guild.id
+            settings = await self._settings(guild_id)
 
-        score = self._score(message, settings["weights"])
+            if not settings["channel_id"]:
+                return
+            if str(reaction.emoji) not in settings["weights"]:
+                return
+            if message.channel.id == settings["channel_id"]:
+                return
 
-        sb_channel = message.guild.get_channel(settings["channel_id"])
-        if not sb_channel:
-            return
+            try:
+                message = await message.channel.fetch_message(message.id)
+            except discord.HTTPException:
+                return
 
-        # Don't allow starring messages posted in the starboard itself
-        if message.channel.id == settings["channel_id"]:
-            return
+            score      = self._score(message, settings["weights"])
+            sb_channel = message.guild.get_channel(settings["channel_id"])
+            if not sb_channel:
+                return
 
-        existing = await db.get_starboard_post(guild_id, message.id)
+            existing = await db.get_starboard_post(guild_id, message.id)
+            if existing:
+                await self._update(sb_channel, existing["starboard_message_id"], message, score)
+            elif score >= settings["threshold"]:
+                await self._post(sb_channel, message, score, guild_id)
 
-        if existing:
-            await self._update(sb_channel, existing["starboard_message_id"], message, score)
-        elif score >= settings["threshold"]:
-            await self._post(sb_channel, message, score, guild_id)
+        except asyncpg.PostgresError:
+            pass
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
+    async def on_reaction_add(self, reaction, user):
         await self._handle_reaction(reaction, user)
 
     @commands.Cog.listener()
-    async def on_reaction_remove(self, reaction: discord.Reaction, user: discord.User):
+    async def on_reaction_remove(self, reaction, user):
         await self._handle_reaction(reaction, user)
 
     # ── !starboard command group ─────────────────────────────────────── #
 
-    @commands.group(
-        name="starboard",
-        description="Configure the starboard",
-        invoke_without_command=True,
-    )
+    @commands.group(name="starboard", invoke_without_command=True)
     @commands.has_permissions(manage_channels=True)
     async def starboard_cmd(self, ctx: commands.Context):
-        """Show current starboard settings."""
         settings = await self._settings(ctx.guild.id)
-
         channel_val = (
             f"<#{settings['channel_id']}>"
             if settings["channel_id"]
             else "not set — use `!starboard channel #channel`"
         )
-        weights_fmt = ", ".join(
-            f"{e} × {w}" for e, w in settings["weights"].items()
-        )
-
+        weights_fmt = ", ".join(f"{e} × {w}" for e, w in settings["weights"].items())
         fields = [
-            {"name": "Channel",         "value": channel_val,            "inline": False},
-            {"name": "Threshold",       "value": str(settings["threshold"]), "inline": True},
-            {"name": "Emoji Weights",   "value": weights_fmt,            "inline": True},
+            {"name": "Channel",       "value": channel_val,                  "inline": False},
+            {"name": "Threshold",     "value": str(settings["threshold"]),   "inline": True},
+            {"name": "Emoji Weights", "value": weights_fmt,                  "inline": True},
         ]
-        embed = EmbedBuilder.create(
-            title="⭐ Starboard Settings",
-            color=Color.BLUE_GRAY,
-            fields=fields,
-        )
-        await ctx.send(embed=embed)
+        await ctx.send(embed=EmbedBuilder.create(title="⭐ Starboard Settings", color=Color.BLUE_GRAY, fields=fields))
 
-    @starboard_cmd.command(name="channel", description="Set (or clear) the starboard channel")
-    async def sb_channel(
-        self, ctx: commands.Context, channel: discord.TextChannel = None
-    ):
-        value = channel.id if channel else None
-        await db.update_guild_setting(ctx.guild.id, "starboard_channel_id", value)
+    @starboard_cmd.command(name="channel")
+    async def sb_channel(self, ctx: commands.Context, channel: discord.TextChannel = None):
+        await db.update_guild_setting(ctx.guild.id, "starboard_channel_id", channel.id if channel else None)
         if channel:
-            await ctx.send(embed=EmbedBuilder.success(
-                "Starboard Channel Set", f"Starboard posts will go to {channel.mention}."
-            ))
+            await ctx.send(embed=EmbedBuilder.success("Starboard Channel Set", f"Posts will go to {channel.mention}."))
         else:
-            await ctx.send(embed=EmbedBuilder.success(
-                "Starboard Disabled", "Starboard channel cleared — no messages will be posted."
-            ))
+            await ctx.send(embed=EmbedBuilder.success("Starboard Disabled", "Starboard channel cleared."))
 
-    @starboard_cmd.command(name="threshold", description="Set the star count needed to be posted")
+    @starboard_cmd.command(name="threshold")
     async def sb_threshold(self, ctx: commands.Context, number: int):
         if not 1 <= number <= 100:
-            await ctx.send(embed=EmbedBuilder.error(
-                "Out of Range", "Threshold must be between **1** and **100**."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Out of Range", "Threshold must be between **1** and **100**."))
             return
         await db.update_guild_setting(ctx.guild.id, "starboard_threshold", number)
         await ctx.send(embed=EmbedBuilder.success(
-            "Threshold Updated",
-            f"Messages need **{number}** star(s) to appear on the starboard.",
+            "Threshold Updated", f"Messages need **{number}** star(s) to appear on the starboard."
         ))
 
-    @starboard_cmd.command(name="emojis", description='Set emoji weights as JSON e.g. {"⭐":1,"✨":2}')
+    @starboard_cmd.command(name="emojis")
     async def sb_emojis(self, ctx: commands.Context, *, weights: str):
         try:
             parsed = json.loads(weights)
             if not isinstance(parsed, dict) or not parsed:
                 raise ValueError
         except (json.JSONDecodeError, ValueError):
-            await ctx.send(embed=EmbedBuilder.error(
-                "Invalid Format",
-                'Provide valid JSON, e.g. `{"⭐": 1, "✨": 2}`',
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Invalid Format", 'Provide valid JSON, e.g. `{"⭐": 1, "✨": 2}`'))
             return
-
         await db.update_guild_setting(ctx.guild.id, "emoji_weights", json.dumps(parsed))
-        formatted = ", ".join(f"{e} × {w}" for e, w in parsed.items())
         await ctx.send(embed=EmbedBuilder.success(
-            "Emoji Weights Updated", f"Tracking: {formatted}"
+            "Emoji Weights Updated",
+            f"Tracking: {', '.join(f'{e} × {w}' for e, w in parsed.items())}"
         ))
 
-    # ── Error handler ─────────────────────────────────────────────────── #
-
     async def cog_command_error(self, ctx: commands.Context, error):
+        # Fix 7
+        err = getattr(error, "original", error)
+        if isinstance(err, asyncpg.PostgresError):
+            await ctx.send(embed=EmbedBuilder.error(
+                "Database Error", "a database error occurred. please try again in a moment."
+            ))
+            return
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send(embed=EmbedBuilder.error(
-                "Permission Denied", "You need **Manage Channels** permission."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Permission Denied", "You need **Manage Channels** permission."))
         elif isinstance(error, commands.ChannelNotFound):
-            await ctx.send(embed=EmbedBuilder.error(
-                "Channel Not Found", "That channel could not be found."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Channel Not Found", "That channel could not be found."))
         elif isinstance(error, commands.BadArgument):
             await ctx.send(embed=EmbedBuilder.error("Invalid Argument", str(error)))
         elif isinstance(error, commands.MissingRequiredArgument):

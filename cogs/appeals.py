@@ -1,70 +1,56 @@
+import asyncpg
 import discord
 from discord.ext import commands
 from database import db
 from utils.embeds import EmbedBuilder
+from utils.logger import log_action
 from colors import Color
 
 
 class Appeals(commands.Cog):
-    """
-    Allows banned users to submit appeals by DMing the bot directly.
-
-    Flow:
-      1. Banned user sends any DM to the bot.
-      2. Bot checks every guild it shares for an active ban on that user.
-      3. If found, and no pending appeal exists, the message is recorded
-         as an appeal and the user is notified.
-      4. Moderators use !appeals / !appeal to review and act.
-    """
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ------------------------------------------------------------------ #
-    #  DM listener — appeal intake                                         #
-    # ------------------------------------------------------------------ #
+    # ── DM listener — appeal intake ───────────────────────────────────── #
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        # Only process DMs from real users.
-        # In a DM, message.guild is None and message.author is discord.User.
         if message.author.bot or message.guild is not None:
             return
 
         user = message.author
+        try:
+            for guild in self.bot.guilds:
+                ban_info = await db.get_active_ban(guild.id, user.id)
+                if not ban_info:
+                    continue
 
-        for guild in self.bot.guilds:
-            ban_info = await db.get_active_ban(guild.id, user.id)
-            if not ban_info:
-                continue
+                pending = await db.get_pending_appeals(guild.id)
+                already_pending = any(
+                    a["user_id"] == user.id and a["ban_id"] == ban_info["id"]
+                    for a in pending
+                )
+                if already_pending:
+                    await user.send(embed=EmbedBuilder.warning(
+                        "Appeal Already Pending",
+                        f"You already have an open appeal for **{guild.name}**.\n"
+                        "Please wait for a moderator to review it.",
+                    ))
+                    return
 
-            # Guard: one pending appeal per ban
-            pending = await db.get_pending_appeals(guild.id)
-            already_pending = any(
-                a["user_id"] == user.id and a["ban_id"] == ban_info["id"]
-                for a in pending
-            )
-            if already_pending:
-                await user.send(embed=EmbedBuilder.warning(
-                    "Appeal Already Pending",
-                    f"You already have an open appeal for **{guild.name}**.\n"
-                    "Please wait for a moderator to review it.",
+                await db.add_appeal(guild.id, user.id, ban_info["id"], message.content)
+                await user.send(embed=EmbedBuilder.info(
+                    "Appeal Submitted",
+                    f"Your appeal for **{guild.name}** has been received.\n"
+                    f"**Original ban reason:** {ban_info['reason']}\n\n"
+                    "A moderator will review your case shortly.",
                 ))
                 return
 
-            await db.add_appeal(guild.id, user.id, ban_info["id"], message.content)
+        except asyncpg.PostgresError:
+            pass
 
-            await user.send(embed=EmbedBuilder.info(
-                "Appeal Submitted",
-                f"Your appeal for **{guild.name}** has been received.\n"
-                f"**Original ban reason:** {ban_info['reason']}\n\n"
-                "A moderator will review your case shortly.",
-            ))
-            return  # Only process the first matching guild
-
-    # ------------------------------------------------------------------ #
-    #  !appeals — list pending appeals                                     #
-    # ------------------------------------------------------------------ #
+    # ── !appeals — list pending ───────────────────────────────────────── #
 
     @commands.command(name="appeals", description="List all pending ban appeals for this server")
     @commands.has_permissions(ban_members=True)
@@ -72,9 +58,7 @@ class Appeals(commands.Cog):
         appeals = await db.get_pending_appeals(ctx.guild.id)
 
         if not appeals:
-            await ctx.send(embed=EmbedBuilder.info(
-                "No Pending Appeals", "There are no appeals awaiting review."
-            ))
+            await ctx.send(embed=EmbedBuilder.info("No Pending Appeals", "There are no appeals awaiting review."))
             return
 
         fields = [
@@ -89,7 +73,6 @@ class Appeals(commands.Cog):
             }
             for a in appeals[:10]
         ]
-
         embed = EmbedBuilder.create(
             title=f"📋 Pending Appeals ({len(appeals)})",
             color=Color.BLUE_GRAY,
@@ -97,29 +80,30 @@ class Appeals(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    # ------------------------------------------------------------------ #
-    #  !appeal <id> [approve|deny] — view or decide an appeal             #
-    # ------------------------------------------------------------------ #
+    # ── !appeal <id> [approve|deny] ───────────────────────────────────── #
 
     @commands.command(name="appeal", description="View or action a specific appeal")
     @commands.has_permissions(ban_members=True)
     async def review_appeal(self, ctx: commands.Context, appeal_id: int, action: str = None):
         appeal = await db.get_appeal(appeal_id)
 
-        if not appeal:
+        # Fix 3 — guild boundary: moderators can only touch appeals from their own guild.
+        # Using the same "not found" message for both cases avoids leaking
+        # the existence of other guilds' appeals.
+        if not appeal or appeal["guild_id"] != ctx.guild.id:
             await ctx.send(embed=EmbedBuilder.error(
-                "Not Found", f"No appeal exists with ID **#{appeal_id}**."
+                "Not Found", f"no appeal exists with id **#{appeal_id}** in this server."
             ))
             return
 
         # ── View mode ────────────────────────────────────────────────── #
         if action is None:
             fields = [
-                {"name": "User",           "value": f"<@{appeal['user_id']}>",                              "inline": True},
-                {"name": "Status",         "value": appeal["status"].capitalize(),                           "inline": True},
-                {"name": "Ban Reason",     "value": appeal["ban_reason"],                                    "inline": False},
-                {"name": "Appeal Message", "value": appeal["message"],                                       "inline": False},
-                {"name": "Submitted",      "value": appeal["created_at"].strftime("%Y-%m-%d %H:%M UTC"),     "inline": True},
+                {"name": "User",           "value": f"<@{appeal['user_id']}>",                          "inline": True},
+                {"name": "Status",         "value": appeal["status"].capitalize(),                       "inline": True},
+                {"name": "Ban Reason",     "value": appeal["ban_reason"],                                "inline": False},
+                {"name": "Appeal Message", "value": appeal["message"],                                   "inline": False},
+                {"name": "Submitted",      "value": appeal["created_at"].strftime("%Y-%m-%d %H:%M UTC"), "inline": True},
             ]
             if appeal["reviewed_at"]:
                 fields.append({
@@ -127,11 +111,8 @@ class Appeals(commands.Cog):
                     "value":  appeal["reviewed_at"].strftime("%Y-%m-%d %H:%M UTC"),
                     "inline": True,
                 })
-
             embed = EmbedBuilder.create(
-                title=f"📋 Appeal #{appeal_id}",
-                color=Color.BLUE_GRAY,
-                fields=fields,
+                title=f"📋 Appeal #{appeal_id}", color=Color.BLUE_GRAY, fields=fields
             )
             await ctx.send(embed=embed)
             return
@@ -140,8 +121,7 @@ class Appeals(commands.Cog):
         action = action.lower()
         if action not in ("approve", "deny"):
             await ctx.send(embed=EmbedBuilder.error(
-                "Invalid Action",
-                "Use `!appeal <id> approve` or `!appeal <id> deny`.",
+                "Invalid Action", "Use `!appeal <id> approve` or `!appeal <id> deny`."
             ))
             return
 
@@ -160,7 +140,7 @@ class Appeals(commands.Cog):
             try:
                 await ctx.guild.unban(
                     discord.Object(id=appeal["user_id"]),
-                    reason=f"Appeal #{appeal_id} approved by {ctx.author}",
+                    reason=f"appeal #{appeal_id} approved by {ctx.author}",
                 )
             except (discord.NotFound, discord.HTTPException):
                 pass
@@ -175,9 +155,15 @@ class Appeals(commands.Cog):
                 except discord.HTTPException:
                     pass
 
+            # Fix 5 — log the decision
+            await log_action(self.bot, ctx.guild.id, "📋 appeal approved",
+                f"appeal **#{appeal_id}** approved by {ctx.author.mention}.\n"
+                f"user <@{appeal['user_id']}> was unbanned.",
+                Color.NAVY)
+
             await ctx.send(embed=EmbedBuilder.success(
                 "Appeal Approved",
-                f"Appeal **#{appeal_id}** approved — <@{appeal['user_id']}> has been unbanned.",
+                f"appeal **#{appeal_id}** approved — <@{appeal['user_id']}> has been unbanned.",
             ))
 
         else:  # deny
@@ -190,26 +176,33 @@ class Appeals(commands.Cog):
                 except discord.HTTPException:
                     pass
 
+            await log_action(self.bot, ctx.guild.id, "📋 appeal denied",
+                f"appeal **#{appeal_id}** denied by {ctx.author.mention}.",
+                Color.PLUM)
+
             await ctx.send(embed=EmbedBuilder.warning(
-                "Appeal Denied",
-                f"Appeal **#{appeal_id}** has been denied.",
+                "Appeal Denied", f"appeal **#{appeal_id}** has been denied."
             ))
 
-    # ------------------------------------------------------------------ #
-    #  Error handler                                                       #
-    # ------------------------------------------------------------------ #
+    # ── Error handler ─────────────────────────────────────────────────── #
 
     @list_appeals.error
     @review_appeal.error
-    async def _error(self, ctx: commands.Context, error):
+    async def _cmd_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send(embed=EmbedBuilder.error(
-                "Permission Denied", "You need **Ban Members** permission."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Permission Denied", "You need **Ban Members** permission."))
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             await ctx.send(embed=EmbedBuilder.error(
                 "Invalid Usage",
                 "Usage: `!appeals` · `!appeal <id>` · `!appeal <id> approve/deny`",
+            ))
+
+    async def cog_command_error(self, ctx: commands.Context, error):
+        # Fix 7 — handle DB failures gracefully
+        err = getattr(error, "original", error)
+        if isinstance(err, asyncpg.PostgresError):
+            await ctx.send(embed=EmbedBuilder.error(
+                "Database Error", "a database error occurred. please try again in a moment."
             ))
 
 

@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+import asyncpg
 from discord import Embed, Intents
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -17,13 +18,11 @@ intents = Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
-
 _observer = None  # file-watcher handle, stopped on shutdown
 
 
 def _discover_cogs() -> list[str]:
-    """Return cog extension names for every .py file in cogs/."""
+    """Return extension names for every .py file in cogs/."""
     return sorted(
         f"cogs.{p.stem}"
         for p in Path("cogs").glob("*.py")
@@ -31,7 +30,7 @@ def _discover_cogs() -> list[str]:
     )
 
 
-async def _load_cogs():
+async def _load_cogs(bot: commands.Bot):
     for cog in _discover_cogs():
         try:
             await bot.load_extension(cog)
@@ -40,39 +39,58 @@ async def _load_cogs():
             print(f"  ✗ {cog}: {exc}")
 
 
+# Fix 2 — subclass bot so setup_hook() can be overridden.
+# setup_hook() runs exactly once before the first connection and is
+# never re-triggered on reconnect, unlike on_ready().
+class LacieDC(commands.Bot):
+    def __init__(self):
+        super().__init__(
+            command_prefix="!",
+            intents=intents,
+            help_command=None,
+        )
+
+    async def setup_hook(self):
+        global _observer
+
+        await db.connect()
+        print("database connected\n")
+
+        print("loading cogs:")
+        await _load_cogs(self)
+        print()
+
+        # Fix 6 — asyncio.get_running_loop() instead of get_event_loop().
+        # get_running_loop() is always correct inside an async context;
+        # get_event_loop() is deprecated in Python 3.10+ and raises in 3.12+.
+        _observer = start_watcher(self, asyncio.get_running_loop())
+
+
+bot = LacieDC()
+
+
 # ------------------------------------------------------------------ #
-#  Startup                                                             #
+#  Events                                                              #
 # ------------------------------------------------------------------ #
 
 @bot.event
 async def on_ready():
-    global _observer
-
-    print(f"\nLogged in as {bot.user} (ID: {bot.user.id})")
-    print(f"Guilds: {len(bot.guilds)}\n")
-
-    await db.connect()
-    print("Database connected\n")
-
-    print("Loading cogs:")
-    await _load_cogs()
-
-    await bot.tree.sync()
-    print("\nSlash commands synced\n")
-
-    _observer = start_watcher(bot, asyncio.get_event_loop())
-    print("\nBot is ready.")
+    # on_ready is now lightweight — only fires for status reporting.
+    # All one-time init has moved to setup_hook() above.
+    print(f"logged in as {bot.user} ({bot.user.id})")
+    print(f"guilds: {len(bot.guilds)}")
+    print("bot is ready.")
 
 
 @bot.event
 async def on_guild_join(guild):
     await db.get_guild_settings(guild.id)
-    print(f"Joined guild: {guild.name} ({guild.id})")
+    print(f"joined guild: {guild.name} ({guild.id})")
 
 
 @bot.event
 async def on_guild_remove(guild):
-    print(f"Left guild: {guild.name} ({guild.id})")
+    print(f"left guild: {guild.name} ({guild.id})")
 
 
 # ------------------------------------------------------------------ #
@@ -95,9 +113,9 @@ async def ping(ctx):
 @bot.command(name="reload", description="Reload all currently loaded cogs")
 @commands.is_owner()
 async def reload_cogs(ctx):
-    loaded = [ext for ext in bot.extensions if ext.startswith("cogs.")]
+    loaded = sorted(ext for ext in bot.extensions if ext.startswith("cogs."))
     lines  = []
-    for cog in sorted(loaded):
+    for cog in loaded:
         try:
             await bot.reload_extension(cog)
             lines.append(f"✅ `{cog}`")
@@ -125,7 +143,7 @@ async def reload_error(ctx, error):
 async def main():
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        print("Error: DISCORD_TOKEN not set in .env")
+        print("error: DISCORD_TOKEN not set in .env")
         raise SystemExit(1)
 
     try:

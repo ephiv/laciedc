@@ -1,3 +1,4 @@
+import asyncpg
 import discord
 from discord.ext import commands
 from database import db
@@ -19,9 +20,7 @@ class Config(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ------------------------------------------------------------------ #
-    #  !config — show or configure                                         #
-    # ------------------------------------------------------------------ #
+    # ── !config ───────────────────────────────────────────────────────── #
 
     @commands.group(
         name="config",
@@ -30,16 +29,18 @@ class Config(commands.Cog):
     )
     @commands.has_permissions(manage_guild=True)
     async def config_cmd(self, ctx: commands.Context):
-        """Show all current settings when no subcommand is given."""
         s = await db.get_guild_settings(ctx.guild.id)
 
         def toggle(v: bool) -> str:
             return "✅ on" if v else "❌ off"
 
+        log_ch = f"<#{s['log_channel_id']}>" if s.get("log_channel_id") else "not set"
+
         fields = [
             {"name": "Auto-Mod",          "value": toggle(s["auto_mod_enabled"]),               "inline": True},
             {"name": "Max Warnings",      "value": str(s["max_warns"]),                          "inline": True},
             {"name": "Warn Action",       "value": s["warn_action"].capitalize(),                "inline": True},
+            {"name": "Log Channel",       "value": log_ch,                                       "inline": True},
             {"name": "Profanity Filter",  "value": toggle(s["filter_profanity"]),                "inline": True},
             {"name": "Spam Filter",       "value": toggle(s["filter_spam"]),                     "inline": True},
             {"name": "Invite Filter",     "value": toggle(s["filter_invites"]),                  "inline": True},
@@ -50,68 +51,55 @@ class Config(commands.Cog):
             {"name": "Mention Threshold", "value": f"{s['mention_threshold']} mentions",        "inline": True},
             {"name": "Spam Threshold",    "value": f"{s['spam_threshold']} identical messages", "inline": True},
         ]
-        embed = EmbedBuilder.create(
-            title="⚙️ Server Configuration",
-            color=Color.NAVY,
-            fields=fields,
-        )
+        embed = EmbedBuilder.create(title="⚙️ Server Configuration", color=Color.NAVY, fields=fields)
         await ctx.send(embed=embed)
 
-    # ------------------------------------------------------------------ #
-    #  Subcommands                                                         #
-    # ------------------------------------------------------------------ #
+    # ── Subcommands ───────────────────────────────────────────────────── #
 
-    @config_cmd.command(name="automod", description="Toggle auto-moderation on or off")
+    @config_cmd.command(name="automod")
     async def config_automod(self, ctx: commands.Context, state: str):
         enabled = _parse_bool(state)
         await db.update_guild_setting(ctx.guild.id, "auto_mod_enabled", enabled)
-        word = "enabled" if enabled else "disabled"
         await ctx.send(embed=EmbedBuilder.success(
-            "Auto-Mod Updated", f"Auto-moderation is now **{word}**."
+            "Auto-Mod Updated", f"Auto-moderation is now **{'enabled' if enabled else 'disabled'}**."
         ))
 
-    @config_cmd.command(name="maxwarns", description="Set how many warnings trigger an action (1–10)")
+    @config_cmd.command(name="maxwarns")
     async def config_maxwarns(self, ctx: commands.Context, number: int):
         if not 1 <= number <= 10:
-            await ctx.send(embed=EmbedBuilder.error(
-                "Out of Range", "Number must be between **1** and **10**."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Out of Range", "Number must be between **1** and **10**."))
             return
         await db.update_guild_setting(ctx.guild.id, "max_warns", number)
         await ctx.send(embed=EmbedBuilder.success(
             "Max Warnings Updated", f"Action will be taken after **{number}** warning(s)."
         ))
 
-    @config_cmd.command(name="warnaction", description="Set action at max warnings: timeout / kick / ban")
+    @config_cmd.command(name="warnaction")
     async def config_warnaction(self, ctx: commands.Context, action: str):
         action = action.lower()
         if action not in ("timeout", "kick", "ban"):
-            await ctx.send(embed=EmbedBuilder.error(
-                "Invalid Action", "Choose one of: `timeout`, `kick`, `ban`."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Invalid Action", "Choose one of: `timeout`, `kick`, `ban`."))
             return
         await db.update_guild_setting(ctx.guild.id, "warn_action", action)
         await ctx.send(embed=EmbedBuilder.success(
             "Warn Action Updated", f"Users who hit max warnings will be **{action}**ned."
         ))
 
-    @config_cmd.command(name="filter", description="Toggle a content filter on or off")
+    @config_cmd.command(name="filter")
     async def config_filter(self, ctx: commands.Context, name: str, state: str):
         valid = ("profanity", "spam", "invites", "links", "caps", "mentions")
         if name not in valid:
             await ctx.send(embed=EmbedBuilder.error(
-                "Invalid Filter",
-                f"Valid filters: {', '.join(f'`{v}`' for v in valid)}",
+                "Invalid Filter", f"Valid filters: {', '.join(f'`{v}`' for v in valid)}"
             ))
             return
         enabled = _parse_bool(state)
         await db.update_guild_setting(ctx.guild.id, f"filter_{name}", enabled)
-        word = "enabled" if enabled else "disabled"
         await ctx.send(embed=EmbedBuilder.success(
-            "Filter Updated", f"The **{name}** filter is now **{word}**."
+            "Filter Updated", f"The **{name}** filter is now **{'enabled' if enabled else 'disabled'}**."
         ))
 
-    @config_cmd.command(name="threshold", description="Adjust a filter threshold")
+    @config_cmd.command(name="threshold")
     async def config_threshold(self, ctx: commands.Context, type: str, value: int):
         bounds: dict[str, tuple[int, int, str, str]] = {
             "caps":    (10, 90, "caps_threshold",    "% uppercase letters"),
@@ -120,8 +108,7 @@ class Config(commands.Cog):
         }
         if type not in bounds:
             await ctx.send(embed=EmbedBuilder.error(
-                "Invalid Type",
-                f"Valid types: {', '.join(f'`{k}`' for k in bounds)}",
+                "Invalid Type", f"Valid types: {', '.join(f'`{k}`' for k in bounds)}"
             ))
             return
         lo, hi, db_key, unit = bounds[type]
@@ -135,22 +122,37 @@ class Config(commands.Cog):
             "Threshold Updated", f"**{type.capitalize()}** threshold set to **{value}** {unit}."
         ))
 
-    # ------------------------------------------------------------------ #
-    #  Error handler                                                       #
-    # ------------------------------------------------------------------ #
+    # Fix 5 — log channel subcommand, exposes the stored-but-previously-unusable setting
+    @config_cmd.command(name="logchannel")
+    async def config_logchannel(self, ctx: commands.Context, channel: discord.TextChannel = None):
+        value = channel.id if channel else None
+        await db.update_guild_setting(ctx.guild.id, "log_channel_id", value)
+        if channel:
+            await ctx.send(embed=EmbedBuilder.success(
+                "Log Channel Set", f"mod actions will be logged to {channel.mention}."
+            ))
+        else:
+            await ctx.send(embed=EmbedBuilder.success(
+                "Log Channel Cleared", "mod action logging is now disabled."
+            ))
+
+    # ── Error handlers ────────────────────────────────────────────────── #
 
     @config_cmd.error
     async def config_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send(embed=EmbedBuilder.error(
-                "Permission Denied", "You need **Manage Server** permission."
-            ))
+            await ctx.send(embed=EmbedBuilder.error("Permission Denied", "You need **Manage Server** permission."))
         elif isinstance(error, commands.BadArgument):
             await ctx.send(embed=EmbedBuilder.error("Bad Argument", str(error)))
 
-    # Subcommand errors inherit from the group error handler in discord.py,
-    # but explicit handlers here catch MissingRequiredArgument per-subcommand.
     async def cog_command_error(self, ctx: commands.Context, error):
+        err = getattr(error, "original", error)
+        # Fix 7 — DB error handler
+        if isinstance(err, asyncpg.PostgresError):
+            await ctx.send(embed=EmbedBuilder.error(
+                "Database Error", "a database error occurred. please try again in a moment."
+            ))
+            return
         if isinstance(error, commands.MissingRequiredArgument):
             usage_map = {
                 "automod":     "!config automod <on/off>",
@@ -158,6 +160,7 @@ class Config(commands.Cog):
                 "warnaction":  "!config warnaction <timeout/kick/ban>",
                 "filter":      "!config filter <name> <on/off>",
                 "threshold":   "!config threshold <caps/mention/spam> <value>",
+                "logchannel":  "!config logchannel [#channel]",
             }
             usage = usage_map.get(ctx.command.name, f"!{ctx.command.qualified_name}")
             await ctx.send(embed=EmbedBuilder.error("Missing Argument", f"Usage: `{usage}`"))
